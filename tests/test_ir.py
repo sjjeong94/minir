@@ -1,5 +1,5 @@
 import numpy as np
-from minir import Value, Operation
+from minir import Value, Operation, Function
 
 
 def test_value_basic_properties():
@@ -39,12 +39,34 @@ def test_value_from_numpy_and_to_numpy():
 
 def test_operation_repr():
     op = Operation(
-        name="transpose",
-        operands=[Value(name="%0", dtype="float32", shape=[4, 8, 12])],
-        results=[Value(name="%1", dtype="float32", shape=[12, 4, 8])],
-        attributes={"perms": [2, 0, 1]},
+        name="arith.mulf",
+        operands=[
+            Value(name="%0", dtype="float32", shape=[8]),
+            Value(name="%1", dtype="float32", shape=[8]),
+        ],
+        results=[Value(name="%2", dtype="float32", shape=[8])],
     )
     assert (
         repr(op)
-        == '%1 = "transpose"(%0) {perms=[2, 0, 1]} : (tensor<4x8x12xf32>) -> tensor<12x4x8xf32>'
+        == '%2 = "arith.mulf"(%0, %1) : (tensor<8xf32>, tensor<8xf32>) -> tensor<8xf32>'
     )
+
+
+def test_function_multiple_operations():
+    x = Value(name="x", dtype="float32", shape=[8])
+    y = Value(name="y", dtype="float32", shape=[8])
+    z = Value(name="z", dtype="float32", shape=[8])
+    temp1 = Value(name="temp1", dtype="float32", shape=[8])
+    temp2 = Value(name="temp2", dtype="float32", shape=[8])
+    op1 = Operation(name="arith.mulf", operands=[x, y], results=[temp1])
+    op2 = Operation(name="arith.addf", operands=[temp1, z], results=[temp2])
+    func = Function(operations=[op1, op2])
+
+    print(repr(func))
+
+    assert x in func.arguments
+    assert y in func.arguments
+    assert z in func.arguments
+    assert temp1 in func.local_values
+    assert temp2 in func.results
+    assert all(v.owner is not None or v in func.arguments for v in func.values)

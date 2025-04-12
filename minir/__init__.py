@@ -1,1 +1,1 @@
-from minir.ir import Value, Operation
+from minir.ir import Value, Operation, Function

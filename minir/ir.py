@@ -95,3 +95,91 @@ class Operation:
         attrs = " {" + attrs + "}" if attrs else ""
         t = f'{results} = "{self.name}"({operands}){attrs} : ({operands_info}) -> {results_info}'
         return t
+
+
+class Function:
+    def __init__(self, operations: List[Operation], name: Optional[str] = None) -> None:
+        self.name = "function" if name is None else name
+        self.operations = operations
+        self.set_owner_and_users()
+        self.rename_values()
+
+    def __repr__(self, elide: bool = True) -> str:
+        args = f", ".join([f"{v.name} : {str(v)}" for v in self.arguments])
+        results = f", ".join([v.name for v in self.results])
+        results_info = f", ".join([f"{str(v)}" for v in self.results])
+        t = f"func.func @{self.name}({args}) -> ({results_info}) {{\n"
+        for constant in self.constants:
+            if constant.is_scalar():
+                data = f"{constant.to_numpy()}"
+            else:
+                data = "..." if elide else f'"0x{constant.data.hex().upper()}"'
+                data = f"dense<{data}>"
+            t += f"  {constant.name} = arith.constant {data} : {constant}\n"
+        for operation in self.operations:
+            t += f"  {str(operation)}\n"
+        t += f"  return {results} : {results_info}\n"
+        t += f"}}"
+        return t
+
+    def set_owner_and_users(self) -> "Function":
+        for value in self.values:
+            value.owner = None
+            value.users = []
+        for operation in self.operations:
+            for value in operation.operands:
+                value.users.append(operation)
+            for value in operation.results:
+                value.owner = operation
+        return self
+
+    def rename_values(self) -> "Function":
+        counter = 0
+        for value in self.values:
+            value.name = f"%{counter}"
+            counter += 1
+        return self
+
+    @property
+    def arguments(self) -> List[Value]:
+        values = []
+        for operation in self.operations:
+            for value in operation.operands:
+                if (
+                    not value.is_constant()
+                    and value.owner is None
+                    and value not in values
+                ):
+                    values.append(value)
+        return values
+
+    @property
+    def results(self) -> List[Value]:
+        values = []
+        for operation in self.operations:
+            for value in operation.results:
+                if len(value.users) == 0:
+                    values.append(value)
+        return values
+
+    @property
+    def constants(self) -> List[Value]:
+        values = []
+        for operation in self.operations:
+            for value in operation.operands:
+                if value.is_constant() and value not in values:
+                    values.append(value)
+        return values
+
+    @property
+    def local_values(self) -> List[Value]:
+        values = []
+        for operation in self.operations:
+            for value in operation.results:
+                if len(value.users) > 0:
+                    values.append(value)
+        return values
+
+    @property
+    def values(self) -> List[Value]:
+        return self.arguments + self.results + self.constants + self.local_values
