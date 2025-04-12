@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minir"
+version = "0.1.0"
+description = "A minimal implementation of an intermediate representation"
+dependencies = [
+    "numpy",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["minir*"]
