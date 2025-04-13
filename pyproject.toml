@@ -8,8 +8,14 @@ version = "0.1.0"
 description = "A minimal implementation of an intermediate representation"
 dependencies = [
     "numpy",
+    "onnx",
+    "onnxsim",
+    "onnxruntime",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["minir*"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
