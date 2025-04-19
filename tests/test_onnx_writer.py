@@ -5,6 +5,7 @@ from minir.onnx_writer import ONNXWriter
 def test_unary_op():
     l = ONNXWriter()
     x = l.float32([3, 4])
+    x = l.Identity(x)
     x = l.Abs(x)
     x = l.Neg(x)
     x = l.Exp(x)
@@ -135,6 +136,30 @@ def test_reduce_log_sum_exp():
     assert isinstance(model, onnx.ModelProto)
 
 
+def test_global_average_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.GlobalAveragePool(x)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_global_max_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.GlobalMaxPool(x)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_global_lp_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.GlobalLpPool(x, p=2)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
 def test_clip():
     l = ONNXWriter()
     x = l.float32([3, 4])
@@ -157,6 +182,36 @@ def test_matmul():
     a = l.float32([3, 4])
     b = l.float32([4, 5])
     x = l.MatMul(a, b)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_pad():
+    l = ONNXWriter()
+    x = l.float32([3, 4])
+    x = l.Pad(x, pads=[1, 1, 1, 1], mode="constant", constant_value=0.0)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_conv():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    w = l.float32([2, 3, 3, 3])
+    b = l.float32([2])
+    x = l.Conv(x, w, b, strides=[1, 1], pads=[1, 1, 1, 1], dilations=[1, 1], group=1)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_conv_transpose():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    w = l.float32([3, 2, 3, 3])
+    b = l.float32([2])
+    x = l.ConvTranspose(
+        x, w, b, strides=[1, 1], pads=[1, 1, 1, 1], dilations=[1, 1], group=1
+    )
     model = l.to_onnx()
     assert isinstance(model, onnx.ModelProto)
 
@@ -205,8 +260,7 @@ def test_concat():
 def test_gather():
     l = ONNXWriter()
     data = l.float32([3, 4])
-    indices = l.int64([2])
-    x = l.Gather(data, indices, axis=0)
+    x = l.Gather(data, indices=[2], axis=0)
     model = l.to_onnx()
     assert isinstance(model, onnx.ModelProto)
 

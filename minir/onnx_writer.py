@@ -20,6 +20,9 @@ class ONNXWriter(Writer):
         self.write(name=name, operands=[x], results=[y], attributes=kwargs)
         return y
 
+    def Identity(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Identity", x=x, **kwargs)
+
     def Abs(self, x: Value, **kwargs) -> Value:
         return self.unary_op(name="Abs", x=x, **kwargs)
 
@@ -290,6 +293,23 @@ class ONNXWriter(Writer):
             name="ReduceLogSumExp", x=x, axes=axes, keepdims=keepdims, **kwargs
         )
 
+    def global_op(self, name: str, x: Value, **kwargs) -> Value:
+        shape = x.shape.copy()
+        for i in range(2, len(shape)):
+            shape[i] = 1
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(name=name, operands=[x], results=[y], attributes=kwargs)
+        return y
+
+    def GlobalAveragePool(self, x: Value, **kwargs) -> Value:
+        return self.global_op(name="GlobalAveragePool", x=x, **kwargs)
+
+    def GlobalMaxPool(self, x: Value, **kwargs) -> Value:
+        return self.global_op(name="GlobalMaxPool", x=x, **kwargs)
+
+    def GlobalLpPool(self, x: Value, p: int = 2, **kwargs) -> Value:
+        return self.global_op(name="GlobalLpPool", x=x, p=p, **kwargs)
+
     def Clip(self, x: Value, min: Any, max: Any, **kwargs) -> Value:
         min = self.constant(np.array(min, dtype=x.dtype))
         max = self.constant(np.array(max, dtype=x.dtype))
@@ -333,6 +353,100 @@ class ONNXWriter(Writer):
     def MatMul(self, a: Value, b: Value) -> Value:
         y = self.float32(a.shape[:-1] + b.shape[-1:])
         self.write("MatMul", [a, b], [y])
+        return y
+
+    def Pad(
+        self,
+        x: Value,
+        pads: List[int],
+        mode: str = "constant",
+        constant_value: Optional[Any] = None,
+        **kwargs,
+    ) -> Value:
+        shape = []
+        for i in range(len(x.shape)):
+            shape.append(x.shape[i] + pads[i] + pads[i + len(pads) // 2])
+        y = self.empty(dtype=x.dtype, shape=shape)
+        pads_value = self.constant(np.array(pads, dtype=np.int64))
+        inputs = [x, pads_value]
+        if constant_value is not None:
+            inputs.append(self.constant(np.array(constant_value, dtype=x.dtype)))
+        self.write(
+            name="Pad",
+            operands=inputs,
+            results=[y],
+            attributes={"mode": mode, **kwargs},
+        )
+        return y
+
+    def Conv(
+        self,
+        x: Value,
+        w: Value,
+        b: Optional[Value] = None,
+        dilations: List[int] = [1, 1],
+        group: int = 1,
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        shape = [x.shape[0], w.shape[0]]
+        spatial_dims = len(x.shape) - 2
+        for i in range(spatial_dims):
+            xs, ws = x.shape[i + 2], w.shape[i + 2]
+            pad_size = pads[i] + pads[spatial_dims]
+            dilation, stride = dilations[i], strides[i]
+            s = (xs + pad_size - dilation * (ws - 1) - 1) // stride + 1
+            shape.append(s)
+
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(
+            name="Conv",
+            operands=[x, w, b] if b is not None else [x, w],
+            results=[y],
+            attributes={
+                "dilations": dilations,
+                "group": group,
+                "pads": pads,
+                "strides": strides,
+                **kwargs,
+            },
+        )
+        return y
+
+    def ConvTranspose(
+        self,
+        x: Value,
+        w: Value,
+        b: Optional[Value] = None,
+        dilations: List[int] = [1, 1],
+        group: int = 1,
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        shape = [x.shape[0], w.shape[1] * group]
+        spatial_dims = len(x.shape) - 2
+        for i in range(spatial_dims):
+            xs, ws = x.shape[i + 2], w.shape[i + 2]
+            pad_size = pads[i] + pads[spatial_dims]
+            dilation, stride = dilations[i], strides[i]
+            s = stride * (xs - 1) + dilation * (ws - 1) + 1 - pad_size
+            shape.append(s)
+
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(
+            name="ConvTranspose",
+            operands=[x, w, b] if b is not None else [x, w],
+            results=[y],
+            attributes={
+                "dilations": dilations,
+                "group": group,
+                "pads": pads,
+                "strides": strides,
+                **kwargs,
+            },
+        )
         return y
 
     def Reshape(self, x: Value, shape: List[int], **kwargs) -> Value:
@@ -385,16 +499,17 @@ class ONNXWriter(Writer):
     def Gather(
         self,
         data: Value,
-        indices: Value,
+        indices: List[int],
         axis: int = 0,
         **kwargs,
     ) -> Value:
         shape = data.shape.copy()
-        shape[axis] = indices.shape[0]
+        shape[axis] = len(indices)
+        indices_value = self.constant(np.array(indices, dtype=np.int64))
         y = self.empty(dtype=data.dtype, shape=shape)
         self.write(
             name="Gather",
-            operands=[data, indices],
+            operands=[data, indices_value],
             results=[y],
             attributes={"axis": axis, **kwargs},
         )
