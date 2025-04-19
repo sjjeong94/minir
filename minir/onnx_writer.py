@@ -41,6 +41,39 @@ class ONNXWriter(Writer):
     def Sin(self, x: Value, **kwargs) -> Value:
         return self.unary_op(name="Sin", x=x, **kwargs)
 
+    def Tan(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Tan", x=x, **kwargs)
+
+    def Acos(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Acos", x=x, **kwargs)
+
+    def Asin(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Asin", x=x, **kwargs)
+
+    def Atan(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Atan", x=x, **kwargs)
+
+    def Cosh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Cosh", x=x, **kwargs)
+
+    def Sinh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Sinh", x=x, **kwargs)
+
+    def Tanh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Tanh", x=x, **kwargs)
+
+    def Acosh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Acosh", x=x, **kwargs)
+
+    def Asinh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Asinh", x=x, **kwargs)
+
+    def Atanh(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Atanh", x=x, **kwargs)
+
+    def Reciprocal(self, x: Value, **kwargs) -> Value:
+        return self.unary_op(name="Reciprocal", x=x, **kwargs)
+
     def Floor(self, x: Value, **kwargs) -> Value:
         return self.unary_op(name="Floor", x=x, **kwargs)
 
@@ -55,9 +88,6 @@ class ONNXWriter(Writer):
 
     def Sigmoid(self, x: Value, **kwargs) -> Value:
         return self.unary_op(name="Sigmoid", x=x, **kwargs)
-
-    def Tanh(self, x: Value, **kwargs) -> Value:
-        return self.unary_op(name="Tanh", x=x, **kwargs)
 
     def Elu(self, x: Value, alpha: float = 1.0, **kwargs) -> Value:
         return self.unary_op(name="Elu", x=x, alpha=alpha, **kwargs)
@@ -125,6 +155,141 @@ class ONNXWriter(Writer):
     def PRelu(self, x: Value, slope: Value, **kwargs) -> Value:
         return self.binary_op(name="PRelu", a=x, b=slope, **kwargs)
 
+    def reduce_op(
+        self,
+        name: str,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        shape = []
+        for i in range(x.rank):
+            if i in axes:
+                if keepdims:
+                    shape.append(1)
+            else:
+                shape.append(x.shape[i])
+        y = self.empty(dtype=x.dtype, shape=shape)
+        axes_value = self.constant(np.array(axes, dtype=np.int64))
+        self.write(
+            name=name,
+            operands=[x, axes_value],
+            results=[y],
+            attributes={"keepdims": keepdims, **kwargs},
+        )
+        return y
+
+    def ReduceSum(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceSum", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceSumSquare(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceSumSquare", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceMean(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceMean", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceMax(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceMax", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceMin(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceMin", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceProd(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceProd", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceL1(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceL1", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceL2(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceL2", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceLogSum(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceLogSum", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
+    def ReduceLogSumExp(
+        self,
+        x: Value,
+        axes: List[int],
+        keepdims: int = 0,
+        **kwargs,
+    ) -> Value:
+        return self.reduce_op(
+            name="ReduceLogSumExp", x=x, axes=axes, keepdims=keepdims, **kwargs
+        )
+
     def Clip(self, x: Value, min: Any, max: Any, **kwargs) -> Value:
         min = self.constant(np.array(min, dtype=x.dtype))
         max = self.constant(np.array(max, dtype=x.dtype))
@@ -179,4 +344,80 @@ class ONNXWriter(Writer):
     def Transpose(self, x: Value, perm: List[int], **kwargs) -> Value:
         y = self.empty(dtype=x.dtype, shape=[x.shape[i] for i in perm])
         self.write("Transpose", [x], [y], attributes={"perm": perm, **kwargs})
+        return y
+
+    def Squeeze(self, x: Value, axes: List[int], **kwargs) -> Value:
+        shape = [x.shape[i] for i in range(len(x.shape)) if i not in axes]
+        y = self.empty(dtype=x.dtype, shape=shape)
+        axes_value = self.constant(np.array(axes, dtype=np.int64))
+        self.write("Squeeze", [x, axes_value], [y], attributes={**kwargs})
+        return y
+
+    def Unsqueeze(self, x: Value, axes: List[int], **kwargs) -> Value:
+        shape = x.shape.copy()
+        for axis in axes:
+            if axis < 0:
+                axis += len(shape) + 1
+            shape.insert(axis, 1)
+        y = self.empty(dtype=x.dtype, shape=shape)
+        axes_value = self.constant(np.array(axes, dtype=np.int64))
+        self.write("Unsqueeze", [x, axes_value], [y], attributes={**kwargs})
+        return y
+
+    def Concat(
+        self,
+        inputs: List[Value],
+        axis: int,
+        **kwargs,
+    ) -> Value:
+        shape = inputs[0].shape.copy()
+        for i in range(1, len(inputs)):
+            shape[axis] += inputs[i].shape[axis]
+        y = self.empty(dtype=inputs[0].dtype, shape=shape)
+        self.write(
+            name="Concat",
+            operands=inputs,
+            results=[y],
+            attributes={"axis": axis, **kwargs},
+        )
+        return y
+
+    def Gather(
+        self,
+        data: Value,
+        indices: Value,
+        axis: int = 0,
+        **kwargs,
+    ) -> Value:
+        shape = data.shape.copy()
+        shape[axis] = indices.shape[0]
+        y = self.empty(dtype=data.dtype, shape=shape)
+        self.write(
+            name="Gather",
+            operands=[data, indices],
+            results=[y],
+            attributes={"axis": axis, **kwargs},
+        )
+        return y
+
+    def LayerNormalization(
+        self,
+        x: Value,
+        scale: Value,
+        bias: Optional[Value] = None,
+        axis: int = -1,
+        epsilon: float = 1e-5,
+        **kwargs,
+    ) -> Value:
+        y = self.empty(dtype=x.dtype, shape=x.shape)
+        self.write(
+            name="LayerNormalization",
+            operands=[x, scale, bias] if bias is not None else [x, scale],
+            results=[y],
+            attributes={
+                "axis": axis,
+                "epsilon": epsilon,
+                **kwargs,
+            },
+        )
         return y
