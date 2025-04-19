@@ -106,7 +106,7 @@ def make_value_info(tensor: Value) -> onnx.ValueInfoProto:
 
 def make_initializer(tensor: Value) -> onnx.TensorProto:
     return onnx.numpy_helper.from_array(
-        tensor=tensor.to_numpy(),
+        tensor.to_numpy(),
         name=tensor.name,
     )
 
@@ -137,7 +137,9 @@ def make_graph(func: Function) -> onnx.GraphProto:
 
 def to_onnx(func: Function) -> onnx.ModelProto:
     graph = make_graph(func)
-    model = onnx.helper.make_model(graph)
+    model = onnx.helper.make_model(
+        graph, opset_imports=[onnx.helper.make_opsetid("", 20)]
+    )
     return model
 
 
