@@ -257,6 +257,14 @@ def test_concat():
     assert isinstance(model, onnx.ModelProto)
 
 
+def test_split():
+    l = ONNXWriter()
+    x = l.float32([3, 4])
+    x1, x2 = l.Split(x, split=[2, 1], axis=0)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
 def test_gather():
     l = ONNXWriter()
     data = l.float32([3, 4])
@@ -271,5 +279,49 @@ def test_layer_norm():
     scale = l.float32([4])
     bias = l.float32([4])
     x = l.LayerNormalization(x, scale, bias, axis=-1, epsilon=1e-5)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_instance_norm():
+    l = ONNXWriter()
+    x = l.float32([3, 4, 8, 8])
+    scale = l.float32([4])
+    bias = l.float32([4])
+    x = l.InstanceNormalization(x, scale, bias, epsilon=1e-5)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_group_norm():
+    l = ONNXWriter()
+    x = l.float32([3, 4, 8, 8])
+    scale = l.float32([2])
+    bias = l.float32([2])
+    x = l.GroupNormalization(x, scale, bias, num_groups=2, epsilon=1e-5)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_average_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.AveragePool(x, kernel_shape=[2, 2], strides=[2, 2], pads=[0, 0, 0, 0])
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_max_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.MaxPool(x, kernel_shape=[2, 2], strides=[2, 2], pads=[0, 0, 0, 0])
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_lp_pool():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 4, 4])
+    x = l.LpPool(x, kernel_shape=[2, 2], p=2, strides=[2, 2], pads=[0, 0, 0, 0])
     model = l.to_onnx()
     assert isinstance(model, onnx.ModelProto)

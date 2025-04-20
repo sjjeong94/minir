@@ -394,7 +394,7 @@ class ONNXWriter(Writer):
         spatial_dims = len(x.shape) - 2
         for i in range(spatial_dims):
             xs, ws = x.shape[i + 2], w.shape[i + 2]
-            pad_size = pads[i] + pads[spatial_dims]
+            pad_size = pads[i] + pads[i + spatial_dims]
             dilation, stride = dilations[i], strides[i]
             s = (xs + pad_size - dilation * (ws - 1) - 1) // stride + 1
             shape.append(s)
@@ -429,7 +429,7 @@ class ONNXWriter(Writer):
         spatial_dims = len(x.shape) - 2
         for i in range(spatial_dims):
             xs, ws = x.shape[i + 2], w.shape[i + 2]
-            pad_size = pads[i] + pads[spatial_dims]
+            pad_size = pads[i] + pads[i + spatial_dims]
             dilation, stride = dilations[i], strides[i]
             s = stride * (xs - 1) + dilation * (ws - 1) + 1 - pad_size
             shape.append(s)
@@ -496,6 +496,27 @@ class ONNXWriter(Writer):
         )
         return y
 
+    def Split(
+        self,
+        x: Value,
+        split: List[int],
+        axis: int = 0,
+        **kwargs,
+    ) -> List[Value]:
+        y = []
+        for i in range(len(split)):
+            shape = x.shape.copy()
+            shape[axis] = split[i]
+            y.append(self.empty(dtype=x.dtype, shape=shape))
+        split_value = self.constant(np.array(split, dtype=np.int64))
+        self.write(
+            name="Split",
+            operands=[x, split_value],
+            results=y,
+            attributes={"axis": axis, **kwargs},
+        )
+        return y
+
     def Gather(
         self,
         data: Value,
@@ -536,3 +557,137 @@ class ONNXWriter(Writer):
             },
         )
         return y
+
+    def InstanceNormalization(
+        self,
+        x: Value,
+        scale: Value,
+        bias: Value,
+        epsilon: float = 1e-5,
+        **kwargs,
+    ) -> Value:
+        y = self.empty(dtype=x.dtype, shape=x.shape)
+        self.write(
+            name="InstanceNormalization",
+            operands=[x, scale, bias],
+            results=[y],
+            attributes={
+                "epsilon": epsilon,
+                **kwargs,
+            },
+        )
+        return y
+
+    def GroupNormalization(
+        self,
+        x: Value,
+        scale: Value,
+        bias: Value,
+        num_groups: int,
+        epsilon: float = 1e-5,
+        **kwargs,
+    ) -> Value:
+        y = self.empty(dtype=x.dtype, shape=x.shape)
+        self.write(
+            name="GroupNormalization",
+            operands=[x, scale, bias],
+            results=[y],
+            attributes={
+                "num_groups": num_groups,
+                "epsilon": epsilon,
+                **kwargs,
+            },
+        )
+        return y
+
+    def pool_op(
+        self,
+        name: str,
+        x: Value,
+        kernel_shape: List[int],
+        dilations: List[int] = [1, 1],
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        shape = [x.shape[0], x.shape[1]]
+        spatial_dims = len(x.shape) - 2
+        for i in range(spatial_dims):
+            xs = x.shape[i + 2]
+            pad_size = pads[i] + pads[i + spatial_dims]
+            dilation, stride = dilations[i], strides[i]
+            s = (xs + pad_size - dilation * (kernel_shape[i] - 1) - 1) // stride + 1
+            shape.append(s)
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(
+            name=name,
+            operands=[x],
+            results=[y],
+            attributes={
+                "kernel_shape": kernel_shape,
+                "dilations": dilations,
+                "pads": pads,
+                "strides": strides,
+                **kwargs,
+            },
+        )
+        return y
+
+    def AveragePool(
+        self,
+        x: Value,
+        kernel_shape: List[int],
+        dilations: List[int] = [1, 1],
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        return self.pool_op(
+            name="AveragePool",
+            x=x,
+            kernel_shape=kernel_shape,
+            dilations=dilations,
+            pads=pads,
+            strides=strides,
+            **kwargs,
+        )
+
+    def MaxPool(
+        self,
+        x: Value,
+        kernel_shape: List[int],
+        dilations: List[int] = [1, 1],
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        return self.pool_op(
+            name="MaxPool",
+            x=x,
+            kernel_shape=kernel_shape,
+            dilations=dilations,
+            pads=pads,
+            strides=strides,
+            **kwargs,
+        )
+
+    def LpPool(
+        self,
+        x: Value,
+        kernel_shape: List[int],
+        p: int = 2,
+        dilations: List[int] = [1, 1],
+        pads: List[int] = [0, 0, 0, 0],
+        strides: List[int] = [1, 1],
+        **kwargs,
+    ) -> Value:
+        return self.pool_op(
+            name="LpPool",
+            x=x,
+            kernel_shape=kernel_shape,
+            dilations=dilations,
+            pads=pads,
+            strides=strides,
+            p=p,
+            **kwargs,
+        )
