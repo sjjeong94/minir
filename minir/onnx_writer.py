@@ -4,13 +4,19 @@ from typing import Optional, Any, List
 from minir.ir import Value
 from minir.writer import Writer
 from minir.onnx import to_onnx
+from minir.utils import product
 
 
 class ONNXWriter(Writer):
     # opset_version = 20
-    def to_onnx(self, save_path: Optional[str] = None) -> onnx.ModelProto:
+    def to_onnx(
+        self,
+        save_path: Optional[str] = None,
+        check_model: bool = True,
+    ) -> onnx.ModelProto:
         model = to_onnx(self.to_function())
-        onnx.checker.check_model(model, full_check=True)
+        if check_model:
+            onnx.checker.check_model(model, full_check=True)
         if save_path is not None:
             onnx.save(model, save_path)
         return model
@@ -350,9 +356,9 @@ class ONNXWriter(Writer):
         )
         return y
 
-    def MatMul(self, a: Value, b: Value) -> Value:
+    def MatMul(self, a: Value, b: Value, **kwargs) -> Value:
         y = self.float32(a.shape[:-1] + b.shape[-1:])
-        self.write("MatMul", [a, b], [y])
+        self.write("MatMul", [a, b], [y], attributes=kwargs)
         return y
 
     def Pad(
@@ -464,7 +470,7 @@ class ONNXWriter(Writer):
         shape = [x.shape[i] for i in range(len(x.shape)) if i not in axes]
         y = self.empty(dtype=x.dtype, shape=shape)
         axes_value = self.constant(np.array(axes, dtype=np.int64))
-        self.write("Squeeze", [x, axes_value], [y], attributes={**kwargs})
+        self.write("Squeeze", [x, axes_value], [y], attributes=kwargs)
         return y
 
     def Unsqueeze(self, x: Value, axes: List[int], **kwargs) -> Value:
@@ -475,7 +481,13 @@ class ONNXWriter(Writer):
             shape.insert(axis, 1)
         y = self.empty(dtype=x.dtype, shape=shape)
         axes_value = self.constant(np.array(axes, dtype=np.int64))
-        self.write("Unsqueeze", [x, axes_value], [y], attributes={**kwargs})
+        self.write("Unsqueeze", [x, axes_value], [y], attributes=kwargs)
+        return y
+
+    def Flatten(self, x: Value, axis: int = 1, **kwargs) -> Value:
+        shape = [product(x.shape[:axis]), product(x.shape[axis:])]
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write("Flatten", [x], [y], attributes={"axis": axis, **kwargs})
         return y
 
     def Concat(
@@ -533,6 +545,41 @@ class ONNXWriter(Writer):
             operands=[data, indices_value],
             results=[y],
             attributes={"axis": axis, **kwargs},
+        )
+        return y
+
+    def DepthToSpace(
+        self,
+        x: Value,
+        blocksize: int = 2,
+        mode: str = "DCR",
+        **kwargs,
+    ) -> Value:
+        n, c, h, w = x.shape
+        shape = [n, c // (blocksize**2), h * blocksize, w * blocksize]
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(
+            name="DepthToSpace",
+            operands=[x],
+            results=[y],
+            attributes={"blocksize": blocksize, "mode": mode, **kwargs},
+        )
+        return y
+
+    def SpaceToDepth(
+        self,
+        x: Value,
+        blocksize: int = 2,
+        **kwargs,
+    ) -> Value:
+        n, c, h, w = x.shape
+        shape = [n, c * (blocksize**2), h // blocksize, w // blocksize]
+        y = self.empty(dtype=x.dtype, shape=shape)
+        self.write(
+            name="SpaceToDepth",
+            operands=[x],
+            results=[y],
+            attributes={"blocksize": blocksize, **kwargs},
         )
         return y
 

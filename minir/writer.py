@@ -1,11 +1,7 @@
-import uuid
 import numpy as np
 from typing import Any, Dict, List, Optional
 from minir.ir import Operation, Value, Function
-
-
-def generate_unique_name() -> str:
-    return f"%{uuid.uuid4().hex[:8]}"
+from minir.utils import generate_unique_name
 
 
 class Writer:

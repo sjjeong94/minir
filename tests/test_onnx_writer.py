@@ -248,6 +248,14 @@ def test_unsqueeze():
     assert isinstance(model, onnx.ModelProto)
 
 
+def test_flatten():
+    l = ONNXWriter()
+    x = l.float32([3, 4, 8, 8])
+    x = l.Flatten(x, axis=2)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
 def test_concat():
     l = ONNXWriter()
     x1 = l.float32([3, 4])
@@ -269,6 +277,22 @@ def test_gather():
     l = ONNXWriter()
     data = l.float32([3, 4])
     x = l.Gather(data, indices=[2], axis=0)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_depth_to_space():
+    l = ONNXWriter()
+    x = l.float32([1, 12, 4, 4])
+    x = l.DepthToSpace(x, blocksize=2)
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
+
+
+def test_space_to_depth():
+    l = ONNXWriter()
+    x = l.float32([1, 3, 8, 8])
+    x = l.SpaceToDepth(x, blocksize=2)
     model = l.to_onnx()
     assert isinstance(model, onnx.ModelProto)
 

@@ -2,6 +2,7 @@ import onnx
 import onnxsim
 from typing import List, Dict, Any
 from minir.ir import Value, Operation, Function
+from minir.utils import generate_unique_name
 
 
 def onnx_to_dtype(onnx_dtype: int) -> str:
@@ -119,6 +120,7 @@ def make_node(operation: Operation) -> onnx.NodeProto:
         op_type=operation.name,
         inputs=inputs,
         outputs=outputs,
+        name=generate_unique_name(prefix=operation.name + "_"),
         **attrs,
     )
 
