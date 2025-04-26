@@ -357,7 +357,7 @@ class ONNXWriter(Writer):
         return y
 
     def MatMul(self, a: Value, b: Value, **kwargs) -> Value:
-        y = self.float32(a.shape[:-1] + b.shape[-1:])
+        y = self.empty(dtype=a.dtype, shape=a.shape[:-1] + b.shape[-1:])
         self.write("MatMul", [a, b], [y], attributes=kwargs)
         return y
 

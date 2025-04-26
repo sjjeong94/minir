@@ -85,13 +85,17 @@ class Operation:
         def get_attr(value: Any) -> str:
             if isinstance(value, str):
                 return f'"{value}"'
+            elif isinstance(value, int):
+                return f"{value} : i32"
+            elif isinstance(value, float):
+                return f"{value} : f32"
             return str(value)
 
         operands = f", ".join([value.name for value in self.operands])
         results = f", ".join([value.name for value in self.results])
         operands_info = f", ".join([str(value) for value in self.operands])
         results_info = f", ".join([str(value) for value in self.results])
-        attrs = f", ".join([f"{k}={get_attr(v)}" for k, v in self.attributes.items()])
+        attrs = f", ".join([f"{k} = {get_attr(v)}" for k, v in self.attributes.items()])
         attrs = " {" + attrs + "}" if attrs else ""
         t = f'{results} = "{self.name}"({operands}){attrs} : ({operands_info}) -> {results_info}'
         return t
