@@ -183,3 +183,144 @@ class MLIRWriter(Writer):
             results=[result],
         )
         return result
+
+    def math_absf(self, operand: Value) -> Value:
+        return self.unary_op("math.absf", operand)
+
+    def math_absi(self, operand: Value) -> Value:
+        return self.unary_op("math.absi", operand)
+
+    def math_acos(self, operand: Value) -> Value:
+        return self.unary_op("math.acos", operand)
+
+    def math_acosh(self, operand: Value) -> Value:
+        return self.unary_op("math.acosh", operand)
+
+    def math_asin(self, operand: Value) -> Value:
+        return self.unary_op("math.asin", operand)
+
+    def math_asinh(self, operand: Value) -> Value:
+        return self.unary_op("math.asinh", operand)
+
+    def math_atan(self, operand: Value) -> Value:
+        return self.unary_op("math.atan", operand)
+
+    def math_atan2(self, lhs: Value, rhs: Value) -> Value:
+        return self.binary_op("math.atan2", lhs, rhs)
+
+    def math_atanh(self, operand: Value) -> Value:
+        return self.unary_op("math.atanh", operand)
+
+    def math_cbrt(self, operand: Value) -> Value:
+        return self.unary_op("math.cbrt", operand)
+
+    def math_ceil(self, operand: Value) -> Value:
+        return self.unary_op("math.ceil", operand)
+
+    def math_copysign(self, lhs: Value, rhs: Value) -> Value:
+        return self.binary_op("math.copysign", lhs, rhs)
+
+    def math_cos(self, operand: Value) -> Value:
+        return self.unary_op("math.cos", operand)
+
+    def math_cosh(self, operand: Value) -> Value:
+        return self.unary_op("math.cosh", operand)
+
+    def math_ctlz(self, operand: Value) -> Value:
+        return self.unary_op("math.ctlz", operand)
+
+    def math_ctpop(self, operand: Value) -> Value:
+        return self.unary_op("math.ctpop", operand)
+
+    def math_cttz(self, operand: Value) -> Value:
+        return self.unary_op("math.cttz", operand)
+
+    def math_erf(self, operand: Value) -> Value:
+        return self.unary_op("math.erf", operand)
+
+    def math_erfc(self, operand: Value) -> Value:
+        return self.unary_op("math.erfc", operand)
+
+    def math_exp(self, operand: Value) -> Value:
+        return self.unary_op("math.exp", operand)
+
+    def math_exp2(self, operand: Value) -> Value:
+        return self.unary_op("math.exp2", operand)
+
+    def math_expm1(self, operand: Value) -> Value:
+        return self.unary_op("math.expm1", operand)
+
+    def math_floor(self, operand: Value) -> Value:
+        return self.unary_op("math.floor", operand)
+
+    def math_fma(self, a: Value, b: Value, c: Value) -> Value:
+        result = self.empty(dtype=a.dtype, shape=a.shape)
+        self.write(
+            name="math.fma",
+            operands=[a, b, c],
+            results=[result],
+        )
+        return result
+
+    def math_fpowi(self, lhs: Value, rhs: Value) -> Value:
+        return self.binary_op("math.fpowi", lhs, rhs)
+
+    def math_ipowi(self, lhs: Value, rhs: Value) -> Value:
+        return self.binary_op("math.ipowi", lhs, rhs)
+
+    def math_isfinite(self, operand: Value) -> Value:
+        return self.unary_op("math.isfinite", operand)
+
+    def math_isinf(self, operand: Value) -> Value:
+        return self.unary_op("math.isinf", operand)
+
+    def math_isnan(self, operand: Value) -> Value:
+        return self.unary_op("math.isnan", operand)
+
+    def math_isnan(self, operand: Value) -> Value:
+        return self.unary_op("math.isnan", operand)
+
+    def math_isnormal(self, operand: Value) -> Value:
+        return self.unary_op("math.isnormal", operand)
+
+    def math_log(self, operand: Value) -> Value:
+        return self.unary_op("math.log", operand)
+
+    def math_log10(self, operand: Value) -> Value:
+        return self.unary_op("math.log10", operand)
+
+    def math_log1p(self, operand: Value) -> Value:
+        return self.unary_op("math.log1p", operand)
+
+    def math_log2(self, operand: Value) -> Value:
+        return self.unary_op("math.log2", operand)
+
+    def math_powf(self, lhs: Value, rhs: Value) -> Value:
+        return self.binary_op("math.powf", lhs, rhs)
+
+    def math_round(self, operand: Value) -> Value:
+        return self.unary_op("math.round", operand)
+
+    def math_roundeven(self, operand: Value) -> Value:
+        return self.unary_op("math.roundeven", operand)
+
+    def math_rsqrt(self, operand: Value) -> Value:
+        return self.unary_op("math.rsqrt", operand)
+
+    def math_sin(self, operand: Value) -> Value:
+        return self.unary_op("math.sin", operand)
+
+    def math_sinh(self, operand: Value) -> Value:
+        return self.unary_op("math.sinh", operand)
+
+    def math_sqrt(self, operand: Value) -> Value:
+        return self.unary_op("math.sqrt", operand)
+
+    def math_tan(self, operand: Value) -> Value:
+        return self.unary_op("math.tan", operand)
+
+    def math_tanh(self, operand: Value) -> Value:
+        return self.unary_op("math.tanh", operand)
+
+    def math_trunc(self, operand: Value) -> Value:
+        return self.unary_op("math.trunc", operand)
