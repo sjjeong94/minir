@@ -33,6 +33,7 @@ class Value:
             "float16": "f16",
             "float32": "f32",
             "float64": "f64",
+            "index": "index",
         }[self.dtype]
         return f"tensor<{shape}x{dtype}>" if not self.is_scalar() else dtype
 
@@ -65,7 +66,8 @@ class Value:
         )
 
     def to_numpy(self) -> np.ndarray:
-        return np.frombuffer(self.data, dtype=self.dtype).reshape(self.shape)
+        dtype = "int64" if self.dtype == "index" else self.dtype
+        return np.frombuffer(self.data, dtype=dtype).reshape(self.shape)
 
 
 class Operation:

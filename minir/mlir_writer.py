@@ -143,3 +143,43 @@ class MLIRWriter(Writer):
 
     def arith_andi(self, lhs: Value, rhs: Value) -> Value:
         return self.binary_op("arith.andi", lhs, rhs)
+
+    def tensor_reshape(self, source: Value, shape: List[int]) -> Value:
+        result = self.empty(dtype=source.dtype, shape=shape)
+        shape_value = self.constant(np.int32(shape))
+        self.write(
+            name="tensor.reshape",
+            operands=[source, shape_value],
+            results=[result],
+        )
+        return result
+
+    def tensor_concat(self, inputs: List[Value], dim: int) -> Value:
+        shape = inputs[0].shape.copy()
+        for i in range(1, len(inputs)):
+            shape[dim] += inputs[i].shape[dim]
+        result = self.empty(dtype=inputs[0].dtype, shape=shape)
+        self.write(
+            name="tensor.concat",
+            operands=inputs,
+            results=[result],
+            attributes={"dim": np.int64(dim)},
+        )
+        return result
+
+    def tensor_dim(self, source: Value, index: Value) -> Value:
+        result = self.empty(dtype="index", shape=[])
+        self.write(
+            name="tensor.dim",
+            operands=[source, index],
+            results=[result],
+        )
+
+    def tensor_rank(self, tensor: Value) -> Value:
+        result = self.empty(dtype="index", shape=[])
+        self.write(
+            name="tensor.rank",
+            operands=[tensor],
+            results=[result],
+        )
+        return result

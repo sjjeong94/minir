@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from minir.ir import Operation, Value, Function
 from minir.utils import generate_unique_name
 
@@ -32,8 +32,16 @@ class Writer:
             )
         )
 
-    def constant(self, data: np.ndarray) -> Value:
-        return Value.from_numpy(data, name=generate_unique_name())
+    def constant(self, data: Union[np.ndarray, int]) -> Value:
+        if isinstance(data, np.ndarray):
+            value = Value.from_numpy(data, name=generate_unique_name())
+        elif isinstance(data, int):
+            data = np.int64(data)
+            value = Value.from_numpy(data, name=generate_unique_name())
+            value.dtype = "index"
+        else:
+            raise ValueError("Unsupported data type for constant.")
+        return value
 
     def empty(self, dtype: str, shape: List[int]) -> Value:
         return Value(generate_unique_name(), dtype=dtype, shape=shape)
