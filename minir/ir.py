@@ -3,6 +3,23 @@ from functools import reduce
 from typing import List, Optional, Dict, Any
 
 
+def get_dtype(dtype: str) -> str:
+    return {
+        "int8": "i8",
+        "int16": "i16",
+        "int32": "i32",
+        "int64": "i64",
+        "uint8": "ui8",
+        "uint16": "ui16",
+        "uint32": "ui32",
+        "uint64": "ui64",
+        "float16": "f16",
+        "float32": "f32",
+        "float64": "f64",
+        "index": "index",
+    }[dtype]
+
+
 class Value:
     def __init__(
         self,
@@ -21,20 +38,7 @@ class Value:
 
     def __repr__(self):
         shape = "x".join([str(value) for value in self.shape])
-        dtype = {
-            "int8": "i8",
-            "int16": "i16",
-            "int32": "i32",
-            "int64": "i64",
-            "uint8": "ui8",
-            "uint16": "ui16",
-            "uint32": "ui32",
-            "uint64": "ui64",
-            "float16": "f16",
-            "float32": "f32",
-            "float64": "f64",
-            "index": "index",
-        }[self.dtype]
+        dtype = get_dtype(self.dtype)
         return f"tensor<{shape}x{dtype}>" if not self.is_scalar() else dtype
 
     def is_scalar(self) -> bool:
@@ -91,6 +95,11 @@ class Operation:
                 return f"{value} : i32"
             elif isinstance(value, float):
                 return f"{value} : f32"
+            elif isinstance(value, np.ndarray):
+                dtype = get_dtype(str(value.dtype))
+                return f"array<{dtype}: {str(value.tolist())[1:-1]}>"
+            elif isinstance(value, np.dtype):
+                return get_dtype(str(value))
             return str(value)
 
         operands = f", ".join([value.name for value in self.operands])

@@ -111,6 +111,40 @@ class MLIRWriter(Writer):
         )
         return result
 
+    def tosa_conv2d(
+        self,
+        input: Value,
+        weight: Value,
+        bias: Value,
+        pad: List[int] = [0, 0, 0, 0],
+        stride: List[int] = [1, 1],
+        dilation: List[int] = [1, 1],
+        acc_type: str = "float32",
+    ) -> Value:
+        shape = [input.shape[0]]
+        spatial_dims = len(input.shape) - 2
+        for i in range(spatial_dims):
+            xs, ws = input.shape[i + 1], weight.shape[i + 1]
+            pad_size = pad[i] + pad[i + spatial_dims]
+            dil, str = dilation[i], stride[i]
+            s = (xs + pad_size - dil * (ws - 1) - 1) // str + 1
+            shape.append(s)
+        shape.append(weight.shape[0])
+
+        output = self.empty(dtype=input.dtype, shape=shape)
+        self.write(
+            name="tosa.conv2d",
+            operands=[input, weight, bias],
+            results=[output],
+            attributes={
+                "pad": np.int64(pad),
+                "stride": np.int64(stride),
+                "dilation": np.int64(dilation),
+                "acc_type": np.dtype(acc_type),
+            },
+        )
+        return output
+
     def arith_negf(self, operand: Value) -> Value:
         return self.unary_op("arith.negf", operand)
 
