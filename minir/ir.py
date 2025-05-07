@@ -108,7 +108,8 @@ class Operation:
         results_info = f", ".join([str(value) for value in self.results])
         attrs = f", ".join([f"{k} = {get_attr(v)}" for k, v in self.attributes.items()])
         attrs = " {" + attrs + "}" if attrs else ""
-        t = f'{results} = "{self.name}"({operands}){attrs} : ({operands_info}) -> {results_info}'
+        t = f"{results} = " if results else ""
+        t += f'"{self.name}"({operands}){attrs} : ({operands_info}) -> ({results_info})'
         return t
 
 

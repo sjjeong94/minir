@@ -48,7 +48,7 @@ def test_operation_repr():
     )
     assert (
         repr(op)
-        == '%2 = "arith.mulf"(%0, %1) : (tensor<8xf32>, tensor<8xf32>) -> tensor<8xf32>'
+        == '%2 = "arith.mulf"(%0, %1) : (tensor<8xf32>, tensor<8xf32>) -> (tensor<8xf32>)'
     )
 
 
