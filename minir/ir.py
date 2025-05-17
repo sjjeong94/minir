@@ -25,12 +25,12 @@ class Value:
         self,
         name: str,
         dtype: str,
-        shape: List[int],
+        shape: Optional[List[int]] = None,
         data: Optional[bytes] = None,
     ) -> None:
         self.name = name
         self.dtype = dtype
-        self.shape = shape
+        self.shape = shape if shape is not None else []
         self.data = data
 
         self.owner: Operation = None

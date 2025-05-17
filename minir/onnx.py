@@ -140,7 +140,9 @@ def make_graph(func: Function) -> onnx.GraphProto:
 def to_onnx(func: Function) -> onnx.ModelProto:
     graph = make_graph(func)
     model = onnx.helper.make_model(
-        graph, opset_imports=[onnx.helper.make_opsetid("", 20)]
+        graph,
+        ir_version=10,
+        opset_imports=[onnx.helper.make_opsetid("", 20)],
     )
     return model
 

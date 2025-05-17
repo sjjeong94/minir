@@ -43,38 +43,38 @@ class Writer:
             raise ValueError("Unsupported data type for constant.")
         return value
 
-    def empty(self, dtype: str, shape: List[int]) -> Value:
+    def empty(self, dtype: str, shape: Optional[List[int]] = None) -> Value:
         return Value(generate_unique_name(), dtype=dtype, shape=shape)
 
-    def int8(self, shape: List[int]) -> Value:
+    def int8(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="int8", shape=shape)
 
-    def int16(self, shape: List[int]) -> Value:
+    def int16(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="int16", shape=shape)
 
-    def int32(self, shape: List[int]) -> Value:
+    def int32(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="int32", shape=shape)
 
-    def int64(self, shape: List[int]) -> Value:
+    def int64(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="int64", shape=shape)
 
-    def uint8(self, shape: List[int]) -> Value:
+    def uint8(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="uint8", shape=shape)
 
-    def uint16(self, shape: List[int]) -> Value:
+    def uint16(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="uint16", shape=shape)
 
-    def uint32(self, shape: List[int]) -> Value:
+    def uint32(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="uint32", shape=shape)
 
-    def uint64(self, shape: List[int]) -> Value:
+    def uint64(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="uint64", shape=shape)
 
-    def float16(self, shape: List[int]) -> Value:
+    def float16(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="float16", shape=shape)
 
-    def float32(self, shape: List[int]) -> Value:
+    def float32(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="float32", shape=shape)
 
-    def float64(self, shape: List[int]) -> Value:
+    def float64(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="float64", shape=shape)
