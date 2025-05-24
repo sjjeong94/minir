@@ -119,10 +119,17 @@ class Function:
         self.operations = operations
         self.set_owner_and_users()
         self.rename_values()
+        if operations[-1].name != "func.return":
+            operations.append(
+                Operation(
+                    name="func.return",
+                    operands=self.results,
+                    results=[],
+                )
+            )
 
     def __repr__(self, elide: bool = True) -> str:
         args = f", ".join([f"{v.name} : {str(v)}" for v in self.arguments])
-        results = f", ".join([v.name for v in self.results])
         results_info = f", ".join([f"{str(v)}" for v in self.results])
         t = f"func.func @{self.name}({args}) -> ({results_info}) {{\n"
         for constant in self.constants:
@@ -134,7 +141,6 @@ class Function:
             t += f"  {constant.name} = arith.constant {data} : {constant}\n"
         for operation in self.operations:
             t += f"  {str(operation)}\n"
-        t += f"  return {results} : {results_info}\n"
         t += f"}}"
         return t
 
@@ -171,12 +177,15 @@ class Function:
 
     @property
     def results(self) -> List[Value]:
-        values = []
-        for operation in self.operations:
-            for value in operation.results:
-                if len(value.users) == 0:
-                    values.append(value)
-        return values
+        if self.operations[-1].name == "func.return":
+            return self.operations[-1].operands
+        else:
+            values = []
+            for operation in self.operations:
+                for value in operation.results:
+                    if len(value.users) == 0:
+                        values.append(value)
+            return values
 
     @property
     def constants(self) -> List[Value]:

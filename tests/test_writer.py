@@ -57,7 +57,7 @@ def test_writer_write_add_operation():
 
     print(writer)
 
-    assert len(writer.operations) == 1
+    assert len(writer.operations) == 2
     op = writer.operations[0]
     assert isinstance(op, Operation)
     assert op.name == "arith.addf"

@@ -78,3 +78,12 @@ class Writer:
 
     def float64(self, shape: Optional[List[int]] = None) -> Value:
         return self.empty(dtype="float64", shape=shape)
+
+    def func_return(self, values: List[Value]) -> None:
+        if not values:
+            raise ValueError("Return values cannot be empty.")
+        self.write(
+            name="func.return",
+            operands=values,
+            results=[],
+        )

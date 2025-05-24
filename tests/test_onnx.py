@@ -71,7 +71,9 @@ def test_full_roundtrip_conversion():
     y = Value(name="y", dtype="float32", shape=[1])
     op = Operation(name="Relu", operands=[x], results=[y])
     func = Function(operations=[op])
+    print(func)
     model = to_onnx(func)
     new_func = from_onnx(model)
-    assert len(new_func.operations) == 1
+    print(new_func)
+    assert len(new_func.operations) == 2
     assert new_func.operations[0].name == "Relu"

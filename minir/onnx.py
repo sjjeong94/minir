@@ -127,7 +127,7 @@ def make_node(operation: Operation) -> onnx.NodeProto:
 
 def make_graph(func: Function) -> onnx.GraphProto:
     graph = onnx.helper.make_graph(
-        nodes=[make_node(operation) for operation in func.operations],
+        nodes=[make_node(operation) for operation in func.operations[:-1]],
         name="graph",
         inputs=[make_value_info(value) for value in func.arguments],
         outputs=[make_value_info(value) for value in func.results],
@@ -169,5 +169,12 @@ def from_onnx(model: onnx.ModelProto) -> Function:
                 attributes=get_attributes(node),
             )
         )
+    nodes.append(
+        Operation(
+            name="func.return",
+            operands=[values_map[output.name] for output in graph.output],
+            results=[],
+        )
+    )
 
     return Function(nodes)
