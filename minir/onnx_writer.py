@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, Any, List
 from minir.ir import Value
 from minir.writer import Writer
-from minir.onnx import to_onnx
+from minir.onnx import to_onnx, dtype_to_onnx
 from minir.utils import product
 
 
@@ -738,3 +738,18 @@ class ONNXWriter(Writer):
             p=p,
             **kwargs,
         )
+
+    def Cast(
+        self,
+        x: Value,
+        to: str,
+        **kwargs,
+    ) -> Value:
+        y = self.empty(dtype=to, shape=x.shape)
+        self.write(
+            name="Cast",
+            operands=[x],
+            results=[y],
+            attributes={"to": dtype_to_onnx(to), **kwargs},
+        )
+        return y

@@ -353,3 +353,11 @@ def test_lp_pool():
     x = l.LpPool(x, kernel_shape=[2, 2], p=2, strides=[2, 2], pads=[0, 0, 0, 0])
     model = l.to_onnx()
     assert isinstance(model, onnx.ModelProto)
+
+
+def test_cast():
+    l = ONNXWriter()
+    x = l.float32([3, 4])
+    x = l.Cast(x, to="int32")
+    model = l.to_onnx()
+    assert isinstance(model, onnx.ModelProto)
