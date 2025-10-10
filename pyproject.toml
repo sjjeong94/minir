@@ -4,13 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "minir"
-version = "0.1.5"
+dynamic = ["version"]
 description = "A minimal implementation of an intermediate representation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Sinjin Jeong", email = "sjjeong94@gmail.com"}
+]
+requires-python = ">=3.8"
 dependencies = [
-    "numpy",
     "onnx",
-    "onnxsim",
-    "onnxruntime",
+    "numpy",
 ]
 
 [tool.setuptools.packages.find]
@@ -19,3 +23,6 @@ include = ["minir*"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+
+[tool.setuptools.dynamic]
+version = {attr = "minir.__version__"}
