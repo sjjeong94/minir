@@ -1,6 +1,24 @@
 from typing import List, Optional, Dict, Any
 
 
+def get_attr(value: Any) -> str:
+    if isinstance(value, str):
+        if len(value) > 8:
+            value = "..."
+        return f'"{value}"'
+    elif isinstance(value, int):
+        return f"{value} : i32"
+    elif isinstance(value, float):
+        return f"{value} : f32"
+    elif isinstance(value, bytes):
+        elide = True
+        data = "__elided__" if elide else f'"0x{value.hex().upper()}"'
+        data = f"dense<{data}>"
+        return data
+    else:
+        return repr(value)
+
+
 class Value:
     def __init__(self, name: str) -> None:
         self.name: str = name
@@ -23,6 +41,8 @@ class Vector(Scalar):
         self.shape: List[int] = shape
 
     def __repr__(self) -> str:
+        if len(self.shape) == 0:
+            return self.dtype
         shape = "x".join(str(v) for v in self.shape)
         return f"vector<{shape}x{self.dtype}>"
 
@@ -39,6 +59,8 @@ class Tensor(Vector):
         self.encoding: Any = encoding
 
     def __repr__(self) -> str:
+        if len(self.shape) == 0:
+            return self.dtype
         shape = "x".join(str(v) for v in self.shape)
         encoding = f", {repr(self.encoding)}" if self.encoding is not None else ""
         return f"tensor<{shape}x{self.dtype}{encoding}>"
@@ -66,22 +88,7 @@ class Operation:
         self.results: List[Value] = results if results is not None else []
         self.attributes: Dict[str, Any] = attributes if attributes is not None else {}
 
-    def __repr__(self):
-        def get_attr(value: Any) -> str:
-            if isinstance(value, str):
-                return f'"{value}"'
-            elif isinstance(value, int):
-                return f"{value} : i32"
-            elif isinstance(value, float):
-                return f"{value} : f32"
-            elif isinstance(value, bytes):
-                elide = True
-                data = "__elided__" if elide else f'"0x{value.hex().upper()}"'
-                data = f"dense<{data}>"
-                return data
-            else:
-                return repr(value)
-
+    def __repr__(self) -> str:
         operands = ", ".join(v.name for v in self.operands)
         results = ", ".join(v.name for v in self.results)
         operands_info = ", ".join(str(v) for v in self.operands)
@@ -94,15 +101,45 @@ class Operation:
 
 
 class Function:
-    def __init__(self, operations: List[Operation], name: str = "function") -> None:
+    def __init__(
+        self,
+        operations: List[Operation],
+        name: str = "function",
+        arg_attrs: Optional[List[Dict[str, Any]]] = None,
+        res_attrs: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         self.name: str = name
         self.operations: List[Operation] = operations
         self.set_owner_and_users()
         self.rename_values()
+        self.arg_attrs: List[Dict[str, Any]] = [] if arg_attrs is None else arg_attrs
+        self.res_attrs: List[Dict[str, Any]] = [] if res_attrs is None else res_attrs
 
     def __repr__(self) -> str:
-        args = ", ".join(f"{v.name} : {str(v)}" for v in self.arguments)
-        results_info = ", ".join(str(v) for v in self.results)
+        # Format arguments with their attributes (indexed)
+        args_list = []
+        for idx, v in enumerate(self.arguments):
+            arg_str = f"{v.name} : {str(v)}"
+            if idx < len(self.arg_attrs) and self.arg_attrs[idx]:
+                attrs = ", ".join(
+                    f"{k} = {get_attr(val)}" for k, val in self.arg_attrs[idx].items()
+                )
+                arg_str += f" {{{attrs}}}"
+            args_list.append(arg_str)
+        args = ", ".join(args_list)
+
+        # Format results with their attributes (indexed)
+        results_list = []
+        for idx, v in enumerate(self.results):
+            result_str = str(v)
+            if idx < len(self.res_attrs) and self.res_attrs[idx]:
+                attrs = ", ".join(
+                    f"{k} = {get_attr(val)}" for k, val in self.res_attrs[idx].items()
+                )
+                result_str += f" {{{attrs}}}"
+            results_list.append(result_str)
+        results_info = ", ".join(results_list)
+
         t = f"func.func @{self.name}({args}) -> ({results_info}) {{\n"
         for operation in self.operations:
             t += f"  {str(operation)}\n"

@@ -62,6 +62,7 @@ def get_attributes(node: onnx.NodeProto) -> Dict[str, Any]:
                 f"Unsupported attribute type: {onnx.AttributeProto.AttributeType.Name(attr.type)}"
             )
         attributes[attr.name] = value
+    attributes["onnx_name"] = node.name
     return attributes
 
 
@@ -118,11 +119,14 @@ def make_node(operation: Operation) -> onnx.NodeProto:
     inputs = [tensor.name for tensor in operation.operands]
     outputs = [tensor.name for tensor in operation.results]
     attrs = operation.attributes
+    name = attrs.pop("onnx_name", None)
+    if name is None:
+        name = generate_unique_name(prefix=operation.name + "_")
     return onnx.helper.make_node(
         op_type=operation.name.split(".")[-1],
         inputs=inputs,
         outputs=outputs,
-        name=generate_unique_name(prefix=operation.name + "_"),
+        name=name,
         **attrs,
     )
 
@@ -137,15 +141,91 @@ def make_graph(func: Function) -> onnx.GraphProto:
             constants.append(op)
         else:
             operations.append(op)
+
+    if func.arg_attrs:
+        for idx, value in enumerate(func.arguments):
+            for k, v in func.arg_attrs[idx].items():
+                if k == "onnx_name":
+                    value.name = v
+    if func.res_attrs:
+        for idx, value in enumerate(func.results):
+            for k, v in func.res_attrs[idx].items():
+                if k == "onnx_name":
+                    value.name = v
+
     graph = onnx.helper.make_graph(
         nodes=[make_node(operation) for operation in operations],
-        name="graph",
+        name=func.name,
         inputs=[make_value_info(value) for value in func.arguments],
         outputs=[make_value_info(value) for value in func.results],
         value_info=[make_value_info(value) for value in func.local_values],
         initializer=[make_initializer(op) for op in constants],
     )
     return graph
+
+
+def constants_to_initializers(model: onnx.ModelProto) -> onnx.ModelProto:
+    """
+    Convert ONNX Constant nodes to initializers.
+
+    Args:
+        model: Input ONNX model
+
+    Returns:
+        Modified ONNX model with Constant nodes converted to initializers
+    """
+    graph = model.graph
+
+    # Find all Constant nodes
+    constant_nodes = []
+    other_nodes = []
+
+    for node in graph.node:
+        if node.op_type == "Constant":
+            constant_nodes.append(node)
+        else:
+            other_nodes.append(node)
+
+    # Convert Constant nodes to initializers
+    new_initializers = list(graph.initializer)
+
+    for node in constant_nodes:
+        # Get the constant value from attributes
+        value_attr = None
+        for attr in node.attribute:
+            if attr.name == "value":
+                value_attr = attr.t
+                break
+
+        if value_attr is None:
+            continue
+
+        # Create initializer from the constant
+        initializer = onnx.TensorProto()
+        initializer.CopyFrom(value_attr)
+        initializer.name = node.output[0]
+
+        new_initializers.append(initializer)
+
+    # Create new graph with updated nodes and initializers
+    new_graph = onnx.helper.make_graph(
+        nodes=other_nodes,
+        name=graph.name,
+        inputs=graph.input,
+        outputs=graph.output,
+        initializer=new_initializers,
+        value_info=graph.value_info,
+    )
+
+    # Create new model
+    new_model = onnx.helper.make_model(
+        new_graph,
+        producer_name=model.producer_name,
+        ir_version=model.ir_version,
+        opset_imports=model.opset_import,
+    )
+
+    return new_model
 
 
 def to_onnx(func: Function, path: Optional[str] = None) -> onnx.ModelProto:
@@ -163,6 +243,7 @@ def to_onnx(func: Function, path: Optional[str] = None) -> onnx.ModelProto:
 def from_onnx(model: Union[str, onnx.ModelProto]) -> Function:
     if isinstance(model, str):
         model = onnx.load(model)
+    model = constants_to_initializers(model)
     model = onnx.shape_inference.infer_shapes(model)
     graph = model.graph
 
@@ -201,4 +282,9 @@ def from_onnx(model: Union[str, onnx.ModelProto]) -> Function:
         )
     )
 
-    return Function(nodes)
+    return Function(
+        operations=nodes,
+        name=graph.name,
+        arg_attrs=[{"onnx_name": value.name} for value in graph.input],
+        res_attrs=[{"onnx_name": value.name} for value in graph.output],
+    )
