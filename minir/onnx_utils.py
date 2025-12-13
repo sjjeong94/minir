@@ -17,6 +17,7 @@ def onnx_to_dtype(onnx_dtype: int) -> str:
         onnx.TensorProto.FLOAT16: "f16",
         onnx.TensorProto.FLOAT: "f32",
         onnx.TensorProto.DOUBLE: "f64",
+        onnx.TensorProto.UNDEFINED: "none",
     }
     return mapping[onnx_dtype]
 
@@ -34,6 +35,7 @@ def dtype_to_onnx(dtype: str) -> int:
         "f16": onnx.TensorProto.FLOAT16,
         "f32": onnx.TensorProto.FLOAT,
         "f64": onnx.TensorProto.DOUBLE,
+        "none": onnx.TensorProto.UNDEFINED,
     }
     return mapping[dtype]
 
@@ -116,7 +118,12 @@ def make_initializer(operation: Operation) -> onnx.TensorProto:
 
 
 def make_node(operation: Operation) -> onnx.NodeProto:
-    inputs = [tensor.name for tensor in operation.operands]
+    inputs = []
+    for tensor in operation.operands:
+        if tensor.dtype == "none":
+            inputs.append("")
+        else:
+            inputs.append(tensor.name)
     outputs = [tensor.name for tensor in operation.results]
     attrs = operation.attributes
     name = attrs.pop("onnx_name", None)
@@ -135,12 +142,14 @@ def make_graph(func: Function) -> onnx.GraphProto:
     constants = []
     operations = []
     for op in func.operations:
-        if op.name == "func.return":
+        if op.name in {"func.return", "onnx.NoValue"}:
             continue
         elif op.name == "arith.constant":
             constants.append(op)
         else:
             operations.append(op)
+
+    local_values = [v for v in func.local_values if v.dtype != "none"]
 
     if func.arg_attrs:
         for idx, value in enumerate(func.arguments):
@@ -158,7 +167,7 @@ def make_graph(func: Function) -> onnx.GraphProto:
         name=func.name,
         inputs=[make_value_info(value) for value in func.arguments],
         outputs=[make_value_info(value) for value in func.results],
-        value_info=[make_value_info(value) for value in func.local_values],
+        value_info=[make_value_info(value) for value in local_values],
         initializer=[make_initializer(op) for op in constants],
     )
     return graph
@@ -254,8 +263,16 @@ def from_onnx(model: Union[str, onnx.ModelProto]) -> Function:
 
     values = arguments + results + local_values + constants
     values_map = {value.name: value for value in values}
+    values_map[""] = Tensor(name="", dtype="none", shape=[])
 
     nodes: List[Operation] = []
+    nodes.append(
+        Operation(
+            name="onnx.NoValue",
+            operands=[],
+            results=[values_map[""]],
+        )
+    )
     for init in graph.initializer:
         nodes.append(
             Operation(
