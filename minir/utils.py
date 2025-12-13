@@ -1,6 +1,9 @@
 import uuid
 from typing import Iterable
 from functools import reduce
+import numpy as np
+
+from minir.ir import Dense
 
 
 def product(iterable: Iterable[int]) -> int:
@@ -45,3 +48,16 @@ def numpy_to_dtype(np_dtype: str) -> str:
         "float64": "f64",
     }
     return mapping[np_dtype]
+
+
+def dense_to_numpy(dense: Dense) -> np.ndarray:
+    np_dtype = dtype_to_numpy(dense.dtype)
+    array = np.frombuffer(dense.data, dtype=np_dtype).reshape(dense.shape)
+    return array
+
+
+def numpy_to_dense(array: np.ndarray) -> Dense:
+    dtype = numpy_to_dtype(str(array.dtype))
+    data = array.tobytes()
+    shape = list(array.shape)
+    return Dense(data=data, dtype=dtype, shape=shape)

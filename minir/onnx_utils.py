@@ -1,6 +1,6 @@
 import onnx
 from typing import List, Dict, Any, Union, Optional
-from minir.ir import Operation, Function, Tensor
+from minir.ir import Operation, Function, Tensor, Dense
 from minir.utils import generate_unique_name
 
 
@@ -113,7 +113,7 @@ def make_initializer(operation: Operation) -> onnx.TensorProto:
     tensor_proto.name = tensor.name
     tensor_proto.data_type = dtype_to_onnx(tensor.dtype)
     tensor_proto.dims.extend(tensor.shape)
-    tensor_proto.raw_data = operation.attributes.get("value")
+    tensor_proto.raw_data = operation.attributes.get("value").data
     return tensor_proto
 
 
@@ -274,12 +274,14 @@ def from_onnx(model: Union[str, onnx.ModelProto]) -> Function:
         )
     )
     for init in graph.initializer:
+        shape = list(init.dims)
+        dtype = onnx_to_dtype(init.data_type)
         nodes.append(
             Operation(
                 name="arith.constant",
                 operands=[],
                 results=[values_map[init.name]],
-                attributes={"value": init.raw_data},
+                attributes={"value": Dense(init.raw_data, dtype=dtype, shape=shape)},
             )
         )
     for node in graph.node:

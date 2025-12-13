@@ -1,7 +1,7 @@
 import onnx
 import numpy as np
 from typing import Any, Dict, List, Optional, Union
-from minir.ir import Function, Operation, Tensor
+from minir.ir import Function, Operation, Tensor, Dense
 from minir.utils import numpy_to_dtype, product, dtype_to_numpy
 from minir.onnx_utils import dtype_to_onnx, to_onnx
 
@@ -79,7 +79,9 @@ class ONNXWriter:
             name="arith.constant",
             operands=[],
             results=[tensor],
-            attributes={"value": array.tobytes()},
+            attributes={
+                "value": Dense(array.tobytes(), dtype=tensor.dtype, shape=tensor.shape)
+            },
         )
         return tensor
 

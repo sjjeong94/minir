@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
 
-from minir.ir import Tensor, Function
+from minir.ir import Tensor, Function, Dense
 from minir.onnx_writer import ONNXWriter
 
 
@@ -105,7 +105,7 @@ class TestONNXWriterBasics:
         assert op.operands == []
         assert op.results == [tensor]
         assert "value" in op.attributes
-        assert isinstance(op.attributes["value"], bytes)
+        assert isinstance(op.attributes["value"], Dense)
 
     def test_constant_different_dtypes(self):
         """Test constant creation with different data types"""
