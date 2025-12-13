@@ -11,7 +11,7 @@ def get_attr(value: Any) -> str:
     elif isinstance(value, float):
         return f"{value} : f32"
     elif isinstance(value, bytes):
-        elide = True
+        elide = False
         data = "__elided__" if elide else f'"0x{value.hex().upper()}"'
         data = f"dense<{data}>"
         return data
@@ -66,6 +66,28 @@ class Tensor(Vector):
         return f"tensor<{shape}x{self.dtype}{encoding}>"
 
 
+class Array:
+    def __init__(self, data: List[int]) -> None:
+        self.data: List[int] = data
+
+    def __repr__(self) -> str:
+        data_str = ", ".join(str(v) for v in self.data)
+        return f"array<i64: {data_str}>"
+
+
+class Dense:
+    def __init__(self, data: bytes, dtype: str, shape: List[int]) -> None:
+        self.data: bytes = data
+        self.dtype: str = dtype
+        self.shape: List[int] = shape
+
+    def __repr__(self) -> str:
+        elide = False
+        data = "__elided__" if elide else f'"0x{self.data.hex().upper()}"'
+        shape = "x".join(str(v) for v in self.shape)
+        return f"dense<{data}> : tensor<{shape}x{self.dtype}>"
+
+
 class Operation:
     def __init__(
         self,
@@ -89,6 +111,7 @@ class Operation:
         self.attributes: Dict[str, Any] = attributes if attributes is not None else {}
 
     def __repr__(self) -> str:
+        opname = f'"{self.name}"'
         operands = ", ".join(v.name for v in self.operands)
         results = ", ".join(v.name for v in self.results)
         operands_info = ", ".join(str(v) for v in self.operands)
@@ -96,7 +119,7 @@ class Operation:
         attrs = ", ".join(f"{k} = {get_attr(v)}" for k, v in self.attributes.items())
         attrs = f" {{{attrs}}}" if attrs else ""
         t = f"{results} = " if results else ""
-        t += f"{self.name}({operands}){attrs} : ({operands_info}) -> ({results_info})"
+        t += f"{opname}({operands}){attrs} : ({operands_info}) -> ({results_info})"
         return t
 
 

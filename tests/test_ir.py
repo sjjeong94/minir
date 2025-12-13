@@ -142,7 +142,7 @@ class TestOperation:
     def test_operation_repr_simple(self):
         """Test Operation string representation for simple case"""
         op = Operation("test_op")
-        assert repr(op) == "test_op() : () -> ()"
+        assert repr(op) == '"test_op"() : () -> ()'
 
     def test_operation_repr_with_operands_and_results(self):
         """Test Operation string representation with operands and results"""
@@ -150,7 +150,7 @@ class TestOperation:
         result = Tensor("output", "f32", [2])
         op = Operation("relu", [operand], [result])
 
-        expected = "output = relu(input) : (tensor<2xf32>) -> (tensor<2xf32>)"
+        expected = 'output = "relu"(input) : (tensor<2xf32>) -> (tensor<2xf32>)'
         assert repr(op) == expected
 
     def test_operation_repr_with_attributes(self):
@@ -161,7 +161,7 @@ class TestOperation:
         op = Operation("custom", [operand], [result], attrs)
 
         result_str = repr(op)
-        assert "custom(x)" in result_str
+        assert '"custom"(x)' in result_str
         assert "alpha = 0.5 : f32" in result_str
         assert "beta = 1 : i32" in result_str
         assert 'mode = "linear"' in result_str
@@ -174,7 +174,7 @@ class TestOperation:
         op = Operation("const", [operand], [result], attrs)
 
         result_str = repr(op)
-        assert "dense<__elided__>" in result_str
+        assert 'dense<"0x01020304">' in result_str
 
 
 class TestFunction:
