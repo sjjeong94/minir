@@ -442,7 +442,9 @@ class ONNXWriter:
         pads_value = self.constant(np.array(pads, dtype=np.int64))
         inputs = [x, pads_value]
         if constant_value is not None:
-            inputs.append(self.constant(np.array(constant_value, dtype=x.dtype)))
+            inputs.append(
+                self.constant(np.array(constant_value, dtype=dtype_to_numpy(x.dtype)))
+            )
         self.write(
             name="onnx.Pad",
             operands=inputs,

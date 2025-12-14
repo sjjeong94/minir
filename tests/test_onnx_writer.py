@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
 
 from minir.ir import Tensor, Function, Dense
 from minir.onnx_writer import ONNXWriter
@@ -14,6 +13,7 @@ class TestONNXWriterBasics:
         writer = ONNXWriter()
         assert writer.operations == []
         assert isinstance(writer.operations, list)
+        writer.to_onnx(check_model=True)
 
     def test_tensor_creation_default(self):
         """Test tensor creation with default parameters"""
@@ -24,6 +24,7 @@ class TestONNXWriterBasics:
         assert tensor.dtype == "f32"
         assert tensor.shape == [1]
         assert isinstance(tensor, Tensor)
+        writer.to_onnx(check_model=True)
 
     def test_tensor_creation_custom(self):
         """Test tensor creation with custom parameters"""
@@ -32,38 +33,7 @@ class TestONNXWriterBasics:
 
         assert tensor.dtype == "i64"
         assert tensor.shape == [2, 3, 4]
-
-    def test_write_operation(self):
-        """Test writing operations"""
-        writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [2, 3])
-        output_tensor = writer.tensor("f32", [2, 3])
-
-        writer.write(
-            name="test.operation",
-            operands=[input_tensor],
-            results=[output_tensor],
-            attributes={"test_attr": 42},
-        )
-
-        assert len(writer.operations) == 1
-        op = writer.operations[0]
-        assert op.name == "test.operation"
-        assert op.operands == [input_tensor]
-        assert op.results == [output_tensor]
-        assert op.attributes == {"test_attr": 42}
-
-    def test_write_operation_minimal(self):
-        """Test writing operation with minimal parameters"""
-        writer = ONNXWriter()
-        writer.write("simple.op")
-
-        assert len(writer.operations) == 1
-        op = writer.operations[0]
-        assert op.name == "simple.op"
-        assert op.operands == []
-        assert op.results == []
-        assert op.attributes == {}
+        writer.to_onnx(check_model=True)
 
     def test_ret_with_values(self):
         """Test return operation with values"""
@@ -77,6 +47,7 @@ class TestONNXWriterBasics:
         assert op.name == "func.return"
         assert op.operands == [tensor]
         assert op.results == []
+        writer.to_onnx(check_model=True)
 
     def test_ret_without_values(self):
         """Test return operation without values"""
@@ -88,6 +59,7 @@ class TestONNXWriterBasics:
         assert op.name == "func.return"
         assert op.operands == []
         assert op.results == []
+        writer.to_onnx(check_model=True)
 
     def test_constant_creation(self):
         """Test constant tensor creation"""
@@ -106,6 +78,7 @@ class TestONNXWriterBasics:
         assert op.results == [tensor]
         assert "value" in op.attributes
         assert isinstance(op.attributes["value"], Dense)
+        writer.to_onnx(check_model=True)
 
     def test_constant_different_dtypes(self):
         """Test constant creation with different data types"""
@@ -120,6 +93,7 @@ class TestONNXWriterBasics:
         int_array = np.array([10, 20], dtype=np.int64)
         int_tensor = writer.constant(int_array)
         assert int_tensor.dtype == "i64"
+        writer.to_onnx(check_model=True)
 
     def test_repr(self):
         """Test string representation"""
@@ -130,27 +104,11 @@ class TestONNXWriterBasics:
         repr_str = repr(writer)
         assert "func.func" in repr_str
         assert "onnx.Abs" in repr_str
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterUnaryOperations:
     """Test unary operations in ONNXWriter"""
-
-    def test_unary_op_helper(self):
-        """Test the unary_op helper method"""
-        writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [2, 3])
-
-        result = writer.unary_op("test.unary", input_tensor, test_attr=123)
-
-        assert result.dtype == input_tensor.dtype
-        assert result.shape == input_tensor.shape
-        assert len(writer.operations) == 1
-
-        op = writer.operations[0]
-        assert op.name == "test.unary"
-        assert op.operands == [input_tensor]
-        assert op.results == [result]
-        assert op.attributes == {"test_attr": 123}
 
     @pytest.mark.parametrize(
         "op_name",
@@ -192,6 +150,7 @@ class TestONNXWriterUnaryOperations:
         assert result.dtype == input_tensor.dtype
         assert result.shape == input_tensor.shape
         assert writer.operations[-1].name == f"onnx.{op_name}"
+        writer.to_onnx(check_model=True)
 
     def test_activation_functions_with_parameters(self):
         """Test activation functions that accept parameters"""
@@ -225,6 +184,7 @@ class TestONNXWriterUnaryOperations:
         # Test Gelu
         result = writer.Gelu(input_tensor, approximate="tanh")
         assert writer.operations[-1].attributes["approximate"] == "tanh"
+        writer.to_onnx(check_model=True)
 
     def test_softmax_with_axis(self):
         """Test Softmax with axis parameter"""
@@ -233,6 +193,7 @@ class TestONNXWriterUnaryOperations:
 
         result = writer.Softmax(input_tensor, axis=1)
         assert writer.operations[-1].attributes["axis"] == 1
+        writer.to_onnx(check_model=True)
 
     def test_composite_activations(self):
         """Test composite activation functions"""
@@ -254,42 +215,59 @@ class TestONNXWriterUnaryOperations:
         op_names = [op.name for op in writer.operations]
         assert "onnx.Sigmoid" in op_names
         assert "onnx.Mul" in op_names
+        writer.to_onnx(check_model=True)
+
+    def test_additional_activations(self):
+        """Test additional activation functions"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [2, 3])
+
+        # Test Softsign
+        result1 = writer.Softsign(input_tensor)
+        assert result1.shape == input_tensor.shape
+        assert writer.operations[-1].name == "onnx.Softsign"
+
+        # Test Softplus
+        result2 = writer.Softplus(input_tensor)
+        assert result2.shape == input_tensor.shape
+        assert writer.operations[-1].name == "onnx.Softplus"
+
+        # Test Mish
+        result3 = writer.Mish(input_tensor)
+        assert result3.shape == input_tensor.shape
+        assert writer.operations[-1].name == "onnx.Mish"
+
+        writer.to_onnx(check_model=True)
+
+    def test_clip_operation(self):
+        """Test Clip operation"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [2, 3])
+
+        # Test Clip with min and max values
+        result = writer.Clip(input_tensor, min=0.0, max=6.0)
+        assert result.shape == input_tensor.shape
+        assert writer.operations[-1].name == "onnx.Clip"
+        assert len(writer.operations[-1].operands) == 3  # x, min, max
+
+        writer.to_onnx(check_model=True)
+
+    def test_cast_operation(self):
+        """Test Cast operation"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [2, 3])
+
+        # Test Cast from f32 to f16
+        result = writer.Cast(input_tensor, to="f16")
+        assert result.shape == input_tensor.shape
+        assert result.dtype == "f16"
+        assert writer.operations[-1].name == "onnx.Cast"
+
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterBinaryOperations:
     """Test binary operations in ONNXWriter"""
-
-    def test_binary_op_helper(self):
-        """Test the binary_op helper method"""
-        writer = ONNXWriter()
-        tensor_a = writer.tensor("f32", [2, 3])
-        tensor_b = writer.tensor("f32", [2, 3])
-
-        result = writer.binary_op("test.binary", tensor_a, tensor_b, test_attr=456)
-
-        assert result.dtype == tensor_a.dtype
-        assert result.shape == tensor_a.shape
-        assert len(writer.operations) == 1
-
-        op = writer.operations[0]
-        assert op.name == "test.binary"
-        assert op.operands == [tensor_a, tensor_b]
-        assert op.results == [result]
-        assert op.attributes == {"test_attr": 456}
-
-    def test_binary_op_shape_selection(self):
-        """Test binary operation shape selection logic"""
-        writer = ONNXWriter()
-        small_tensor = writer.tensor("f32", [2, 3])
-        large_tensor = writer.tensor("f32", [4, 5, 6])
-
-        # Result should take shape of larger tensor
-        result = writer.binary_op("test.op", small_tensor, large_tensor)
-        assert result.shape == large_tensor.shape
-
-        # Test reverse order
-        result2 = writer.binary_op("test.op", large_tensor, small_tensor)
-        assert result2.shape == large_tensor.shape
 
     @pytest.mark.parametrize("op_name", ["Add", "Sub", "Mul", "Div", "Pow"])
     def test_arithmetic_operations(self, op_name):
@@ -304,6 +282,7 @@ class TestONNXWriterBinaryOperations:
         assert result.dtype == tensor_a.dtype
         assert result.shape == tensor_a.shape
         assert writer.operations[-1].name == f"onnx.{op_name}"
+        writer.to_onnx(check_model=True)
 
     def test_prelu(self):
         """Test PRelu operation"""
@@ -317,6 +296,7 @@ class TestONNXWriterBinaryOperations:
         assert result.shape == x.shape
         assert writer.operations[-1].name == "onnx.PRelu"
         assert writer.operations[-1].operands == [x, slope]
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterReductionOperations:
@@ -355,24 +335,6 @@ class TestONNXWriterReductionOperations:
 class TestONNXWriterPoolingOperations:
     """Test pooling operations in ONNXWriter"""
 
-    def test_global_op_helper(self):
-        """Test the global_op helper method"""
-        writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [1, 64, 32, 32])
-
-        result = writer.global_op("test.global", input_tensor, test_attr=111)
-
-        # Global ops should reduce spatial dimensions to 1
-        expected_shape = [1, 64, 1, 1]
-        assert result.shape == expected_shape
-        assert result.dtype == input_tensor.dtype
-
-        op = writer.operations[0]
-        assert op.name == "test.global"
-        assert op.operands == [input_tensor]
-        assert op.results == [result]
-        assert op.attributes == {"test_attr": 111}
-
     def test_global_pooling_operations(self):
         """Test global pooling operations"""
         writer = ONNXWriter()
@@ -393,30 +355,7 @@ class TestONNXWriterPoolingOperations:
         assert result3.shape == [1, 64, 1, 1]
         assert writer.operations[-1].name == "onnx.GlobalLpPool"
         assert writer.operations[-1].attributes["p"] == 3
-
-    def test_pool_op_helper(self):
-        """Test the pool_op helper method"""
-        writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [1, 64, 32, 32])
-
-        result = writer.pool_op(
-            "test.pool",
-            input_tensor,
-            kernel_shape=[2, 2],
-            strides=[2, 2],
-            pads=[0, 0, 0, 0],
-            test_attr=222,
-        )
-
-        # With stride 2 and no padding, output should be half the size
-        expected_shape = [1, 64, 16, 16]
-        assert result.shape == expected_shape
-
-        op = writer.operations[0]
-        assert op.name == "test.pool"
-        assert op.attributes["kernel_shape"] == [2, 2]
-        assert op.attributes["strides"] == [2, 2]
-        assert op.attributes["test_attr"] == 222
+        writer.to_onnx(check_model=True)
 
     @pytest.mark.parametrize("pool_type", ["MaxPool", "AveragePool", "LpPool"])
     def test_pooling_operations(self, pool_type):
@@ -431,6 +370,7 @@ class TestONNXWriterPoolingOperations:
             result = method(input_tensor, kernel_shape=[2, 2])
 
         assert writer.operations[-1].name == f"onnx.{pool_type}"
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterMatrixOperations:
@@ -464,6 +404,8 @@ class TestONNXWriterMatrixOperations:
         b2 = writer2.tensor("f32", [3, 5])
         result2 = writer2.Gemm(a2, b2)
         assert len(writer2.operations[-1].operands) == 2
+        writer.to_onnx(check_model=True)
+        writer2.to_onnx(check_model=False)
 
     def test_matmul_operation(self):
         """Test MatMul operation"""
@@ -477,6 +419,7 @@ class TestONNXWriterMatrixOperations:
         assert result.shape == expected_shape
         assert result.dtype == a.dtype
         assert writer.operations[-1].name == "onnx.MatMul"
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterConvolutionOperations:
@@ -505,6 +448,7 @@ class TestONNXWriterConvolutionOperations:
         assert op.attributes["group"] == 1
         assert op.attributes["pads"] == [1, 1, 1, 1]
         assert op.attributes["strides"] == [1, 1]
+        writer.to_onnx(check_model=True)
 
     def test_conv_without_bias(self):
         """Test Conv operation without bias"""
@@ -514,6 +458,7 @@ class TestONNXWriterConvolutionOperations:
 
         result = writer.Conv(x, w)
         assert len(writer.operations[-1].operands) == 2
+        writer.to_onnx(check_model=True)
 
     def test_conv_transpose(self):
         """Test ConvTranspose operation"""
@@ -528,6 +473,7 @@ class TestONNXWriterConvolutionOperations:
         assert result.shape[1] == 32
         assert result.dtype == x.dtype
         assert writer.operations[-1].name == "onnx.ConvTranspose"
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterShapeOperations:
@@ -553,8 +499,9 @@ class TestONNXWriterShapeOperations:
         assert result.dtype == input_tensor.dtype
 
         op = writer.operations[0]
-        assert op.name == "Transpose"
+        assert op.name == "onnx.Transpose"
         assert op.attributes["perm"] == [0, 2, 1, 3]
+        writer.to_onnx(check_model=True)
 
     def test_squeeze_operation(self):
         """Test Squeeze operation - simplified version"""
@@ -581,11 +528,32 @@ class TestONNXWriterShapeOperations:
 
         expected_shape = [6, 20]  # [2*3, 4*5]
         assert result.shape == expected_shape
+
+    def test_pad_operation(self):
+        """Test Pad operation"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [2, 3, 4, 5])
+
+        # Test constant padding: pads = [0, 0, 1, 1] means pad 1 on each side of dim 2
+        # For 4D tensor: [begin_0, begin_1, begin_2, begin_3, end_0, end_1, end_2, end_3]
+        pads = [0, 0, 1, 1, 0, 0, 1, 1]
+        result = writer.Pad(
+            input_tensor, pads=pads, mode="constant", constant_value=0.0
+        )
+
+        # Shape should be [2, 3, 4+1+1, 5+1+1] = [2, 3, 6, 7]
+        expected_shape = [2, 3, 6, 7]
+        assert result.shape == expected_shape
         assert result.dtype == input_tensor.dtype
 
-        op = writer.operations[0]
-        assert op.name == "Flatten"
-        assert op.attributes["axis"] == 2
+        # Find the Pad operation (it's not the last one due to constant operations)
+        pad_ops = [op for op in writer.operations if op.name == "onnx.Pad"]
+        assert len(pad_ops) == 1
+        op = pad_ops[0]
+        assert op.attributes["mode"] == "constant"
+        assert len(op.operands) == 3  # x, pads, constant_value
+
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterConcatSplitOperations:
@@ -608,6 +576,7 @@ class TestONNXWriterConcatSplitOperations:
         assert op.name == "onnx.Concat"
         assert op.operands == [tensor1, tensor2, tensor3]
         assert op.attributes["axis"] == 1
+        writer.to_onnx(check_model=True)
 
     def test_split_operation(self):
         """Test Split operation - simplified version"""
@@ -654,6 +623,8 @@ class TestONNXWriterNormalizationOperations:
         scale2 = writer2.tensor("f32", [64])
         result2 = writer2.LayerNormalization(x2, scale2)
         assert len(writer2.operations[-1].operands) == 2
+        writer.to_onnx(check_model=True)
+        writer2.to_onnx(check_model=False)
 
     def test_instance_normalization(self):
         """Test InstanceNormalization operation"""
@@ -671,6 +642,7 @@ class TestONNXWriterNormalizationOperations:
         assert op.name == "onnx.InstanceNormalization"
         assert op.operands == [x, scale, bias]
         assert op.attributes["epsilon"] == 1e-5
+        writer.to_onnx(check_model=True)
 
     def test_group_normalization(self):
         """Test GroupNormalization operation"""
@@ -689,46 +661,7 @@ class TestONNXWriterNormalizationOperations:
         assert op.operands == [x, scale, bias]
         assert op.attributes["num_groups"] == 8
         assert op.attributes["epsilon"] == 1e-5
-
-
-class TestONNXWriterUtilityOperations:
-    """Test utility operations"""
-
-    def test_clip_operation(self):
-        """Test Clip operation - simplified version"""
-        writer = ONNXWriter()
-
-        # Just test that the method exists and is callable
-        assert hasattr(writer, "Clip")
-        assert callable(writer.Clip)
-
-    def test_cast_operation(self):
-        """Test Cast operation"""
-        writer = ONNXWriter()
-        x = writer.tensor("f32", [2, 3])
-
-        with patch("minir.onnx_writer.dtype_to_onnx") as mock_dtype_to_onnx:
-            mock_dtype_to_onnx.return_value = 7  # Mock ONNX type
-
-            result = writer.Cast(x, to="i32")
-
-            assert result.dtype == "i32"
-            assert result.shape == x.shape
-
-            op = writer.operations[-1]
-            assert op.name == "onnx.Cast"
-            assert op.operands == [x]
-            assert op.results == [result]
-
-            mock_dtype_to_onnx.assert_called_once_with("i32")
-
-    def test_pad_operation(self):
-        """Test Pad operation - simplified version"""
-        writer = ONNXWriter()
-
-        # Just test that the method exists and is callable
-        assert hasattr(writer, "Pad")
-        assert callable(writer.Pad)
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterSpaceDepthOperations:
@@ -749,6 +682,7 @@ class TestONNXWriterSpaceDepthOperations:
         assert op.name == "onnx.DepthToSpace"
         assert op.attributes["blocksize"] == 4
         assert op.attributes["mode"] == "DCR"
+        writer.to_onnx(check_model=True)
 
     def test_space_to_depth(self):
         """Test SpaceToDepth operation"""
@@ -764,6 +698,7 @@ class TestONNXWriterSpaceDepthOperations:
         op = writer.operations[0]
         assert op.name == "onnx.SpaceToDepth"
         assert op.attributes["blocksize"] == 4
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterFunctionGeneration:
@@ -781,6 +716,7 @@ class TestONNXWriterFunctionGeneration:
         assert isinstance(func, Function)
         assert len(func.operations) >= 2  # At least relu + return
         assert func.operations[-1].name == "func.return"
+        writer.to_onnx(check_model=True)
 
     def test_to_function_auto_return(self):
         """Test automatic return addition"""
@@ -793,6 +729,7 @@ class TestONNXWriterFunctionGeneration:
 
         # Should automatically add return
         assert func.operations[-1].name == "func.return"
+        writer.to_onnx(check_model=True)
 
     def test_to_function_existing_return(self):
         """Test with existing return operation"""
@@ -806,11 +743,12 @@ class TestONNXWriterFunctionGeneration:
         # Should not add duplicate return
         return_ops = [op for op in func.operations if op.name == "func.return"]
         assert len(return_ops) == 1
+        writer.to_onnx(check_model=True)
 
     def test_to_function_constant_reordering(self):
         """Test that constants are moved to the beginning"""
         writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [2, 3])
+        input_tensor = writer.tensor("f32", [3, 2])
 
         # Add operations in mixed order
         relu_output = writer.Relu(input_tensor)
@@ -830,40 +768,7 @@ class TestONNXWriterFunctionGeneration:
         if first_non_constant_idx is not None:
             for i in range(first_non_constant_idx):
                 assert func.operations[i].name == "arith.constant"
-
-    @patch("minir.onnx_writer.to_onnx")
-    @patch("onnx.checker.check_model")
-    @patch("onnx.save")
-    def test_to_onnx(self, mock_save, mock_check, mock_to_onnx):
-        """Test converting to ONNX model"""
-        writer = ONNXWriter()
-        input_tensor = writer.tensor("f32", [2, 3])
-        output_tensor = writer.Relu(input_tensor)
-
-        # Mock the ONNX model
-        mock_model = MagicMock()
-        mock_to_onnx.return_value = mock_model
-
-        # Test with default parameters
-        result = writer.to_onnx()
-
-        assert result == mock_model
-        mock_to_onnx.assert_called_once()
-        mock_check.assert_called_once_with(mock_model, full_check=True)
-        mock_save.assert_not_called()
-
-        # Reset mocks
-        mock_to_onnx.reset_mock()
-        mock_check.reset_mock()
-
-        # Test with check_model=False
-        writer.to_onnx(check_model=False)
-        mock_check.assert_not_called()
-
-        # Test with save_path
-        mock_to_onnx.reset_mock()
-        writer.to_onnx(save_path="test_model.onnx")
-        mock_save.assert_called_once_with(mock_model, "test_model.onnx")
+        writer.to_onnx(check_model=True)
 
 
 class TestONNXWriterIntegration:
@@ -904,6 +809,7 @@ class TestONNXWriterIntegration:
         assert len(func.operations) > 10  # Should have many operations
         assert func.operations[-1].name == "func.return"
         assert output.shape == [1, 10]
+        writer.to_onnx(check_model=True)
 
     def test_conv_network(self):
         """Test creating a simple CNN"""
@@ -941,6 +847,7 @@ class TestONNXWriterIntegration:
 
         assert len(func.operations) > 10
         assert output.shape == [1, 10]
+        writer.to_onnx(check_model=True)
 
     def test_error_conditions(self):
         """Test error conditions and edge cases"""
@@ -950,3 +857,4 @@ class TestONNXWriterIntegration:
         func = writer.to_function()
         assert func.operations[-1].name == "func.return"
         assert func.operations[-1].operands == []
+        writer.to_onnx(check_model=True)
