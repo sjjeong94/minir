@@ -524,19 +524,19 @@ class ONNXWriter:
     def Reshape(self, x: Tensor, shape: List[int], **kwargs) -> Tensor:
         shape_value = self.constant(np.array(shape, dtype=np.int64))
         y = self.tensor(dtype=x.dtype, shape=shape)
-        self.write("Reshape", [x, shape_value], [y], attributes=kwargs)
+        self.write("onnx.Reshape", [x, shape_value], [y], attributes=kwargs)
         return y
 
     def Transpose(self, x: Tensor, perm: List[int], **kwargs) -> Tensor:
         y = self.tensor(dtype=x.dtype, shape=[x.shape[i] for i in perm])
-        self.write("Transpose", [x], [y], attributes={"perm": perm, **kwargs})
+        self.write("onnx.Transpose", [x], [y], attributes={"perm": perm, **kwargs})
         return y
 
     def Squeeze(self, x: Tensor, axes: List[int], **kwargs) -> Tensor:
         shape = [x.shape[i] for i in range(len(x.shape)) if i not in axes]
         y = self.tensor(dtype=x.dtype, shape=shape)
         axes_value = self.constant(np.array(axes, dtype=np.int64))
-        self.write("Squeeze", [x, axes_value], [y], attributes=kwargs)
+        self.write("onnx.Squeeze", [x, axes_value], [y], attributes=kwargs)
         return y
 
     def Unsqueeze(self, x: Tensor, axes: List[int], **kwargs) -> Tensor:
@@ -547,13 +547,13 @@ class ONNXWriter:
             shape.insert(axis, 1)
         y = self.tensor(dtype=x.dtype, shape=shape)
         axes_value = self.constant(np.array(axes, dtype=np.int64))
-        self.write("Unsqueeze", [x, axes_value], [y], attributes=kwargs)
+        self.write("onnx.Unsqueeze", [x, axes_value], [y], attributes=kwargs)
         return y
 
     def Flatten(self, x: Tensor, axis: int = 1, **kwargs) -> Tensor:
         shape = [product(x.shape[:axis]), product(x.shape[axis:])]
         y = self.tensor(dtype=x.dtype, shape=shape)
-        self.write("Flatten", [x], [y], attributes={"axis": axis, **kwargs})
+        self.write("onnx.Flatten", [x], [y], attributes={"axis": axis, **kwargs})
         return y
 
     def Concat(

@@ -1,6 +1,6 @@
 import onnx
 from typing import List, Dict, Any, Union, Optional
-from minir.ir import Operation, Function, Tensor, Dense
+from minir.ir import Operation, Function, Tensor, Dense, Array
 from minir.utils import generate_unique_name
 
 
@@ -125,7 +125,13 @@ def make_node(operation: Operation) -> onnx.NodeProto:
         else:
             inputs.append(tensor.name)
     outputs = [tensor.name for tensor in operation.results]
-    attrs = operation.attributes
+    attrs = {}
+    for k, v in operation.attributes.items():
+        if isinstance(v, Array):
+            attrs[k] = v.data
+        else:
+            attrs[k] = v
+
     name = attrs.pop("onnx_name", None)
     if name is None:
         name = generate_unique_name(prefix=operation.name + "_")
