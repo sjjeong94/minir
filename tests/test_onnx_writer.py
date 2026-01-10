@@ -594,6 +594,82 @@ class TestONNXWriterConcatSplitOperations:
         assert hasattr(writer, "Gather")
         assert callable(writer.Gather)
 
+    def test_slice_operation(self):
+        """Test Slice operation"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [4, 6, 8])
+
+        # Slice from [1:3, 2:5, 0:4]
+        result = writer.Slice(
+            input_tensor,
+            starts=[1, 2, 0],
+            ends=[3, 5, 4],
+            axes=[0, 1, 2],
+            steps=[1, 1, 1],
+        )
+
+        expected_shape = [2, 3, 4]  # [3-1, 5-2, 4-0]
+        assert result.shape == expected_shape
+        assert result.dtype == input_tensor.dtype
+
+        # Check the Slice operation was created
+        slice_ops = [op for op in writer.operations if op.name == "onnx.Slice"]
+        assert len(slice_ops) == 1
+        op = slice_ops[0]
+        assert len(op.operands) == 5  # data, starts, ends, axes, steps
+        writer.to_onnx(check_model=True)
+
+    def test_slice_with_default_axes_and_steps(self):
+        """Test Slice operation with default axes and steps"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [10, 20])
+
+        # Slice with default axes (0, 1) and steps (1, 1)
+        result = writer.Slice(
+            input_tensor,
+            starts=[2, 5],
+            ends=[8, 15],
+        )
+
+        expected_shape = [6, 10]  # [8-2, 15-5]
+        assert result.shape == expected_shape
+        writer.to_onnx(check_model=True)
+
+    def test_slice_with_step(self):
+        """Test Slice operation with step > 1"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [10, 20])
+
+        # Slice with step=2
+        result = writer.Slice(
+            input_tensor,
+            starts=[0, 0],
+            ends=[10, 20],
+            axes=[0, 1],
+            steps=[2, 2],
+        )
+
+        expected_shape = [5, 10]  # [ceil(10/2), ceil(20/2)]
+        assert result.shape == expected_shape
+        writer.to_onnx(check_model=True)
+
+    def test_slice_partial_axes(self):
+        """Test Slice operation on partial axes"""
+        writer = ONNXWriter()
+        input_tensor = writer.tensor("f32", [4, 6, 8])
+
+        # Slice only axis 1
+        result = writer.Slice(
+            input_tensor,
+            starts=[1],
+            ends=[4],
+            axes=[1],
+        )
+
+        expected_shape = [4, 3, 8]  # Only axis 1 changes: 4-1=3
+        assert result.shape == expected_shape
+        writer.to_onnx(check_model=True)
+
 
 class TestONNXWriterNormalizationOperations:
     """Test normalization operations"""
@@ -858,3 +934,142 @@ class TestONNXWriterIntegration:
         assert func.operations[-1].name == "func.return"
         assert func.operations[-1].operands == []
         writer.to_onnx(check_model=True)
+
+
+class TestONNXWriterComparisonOperations:
+    """Test comparison operations in ONNXWriter"""
+
+    @pytest.mark.parametrize(
+        "op_name",
+        ["Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual"],
+    )
+    def test_comparison_operations(self, op_name):
+        """Test comparison binary operations"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("f32", [2, 3])
+        tensor_b = writer.tensor("f32", [2, 3])
+
+        method = getattr(writer, op_name)
+        result = method(tensor_a, tensor_b)
+
+        assert result.dtype == "i1"  # Boolean output
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == f"onnx.{op_name}"
+
+    def test_comparison_broadcasting(self):
+        """Test comparison operations with broadcasting"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("f32", [2, 3, 4])
+        tensor_b = writer.tensor("f32", [4])
+
+        result = writer.Greater(tensor_a, tensor_b)
+        assert result.shape == [2, 3, 4]
+        assert result.dtype == "i1"
+
+
+class TestONNXWriterLogicalOperations:
+    """Test logical operations in ONNXWriter"""
+
+    @pytest.mark.parametrize("op_name", ["And", "Or", "Xor"])
+    def test_logical_binary_operations(self, op_name):
+        """Test logical binary operations"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i1", [2, 3])
+        tensor_b = writer.tensor("i1", [2, 3])
+
+        method = getattr(writer, op_name)
+        result = method(tensor_a, tensor_b)
+
+        assert result.dtype == "i1"
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == f"onnx.{op_name}"
+
+    def test_not_operation(self):
+        """Test Not operation"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i1", [2, 3])
+
+        result = writer.Not(tensor_a)
+
+        assert result.dtype == "i1"
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == "onnx.Not"
+
+    def test_logical_broadcasting(self):
+        """Test logical operations with broadcasting"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i1", [2, 3, 4])
+        tensor_b = writer.tensor("i1", [4])
+
+        result = writer.And(tensor_a, tensor_b)
+        assert result.shape == [2, 3, 4]
+        assert result.dtype == "i1"
+
+
+class TestONNXWriterBitwiseOperations:
+    """Test bitwise operations in ONNXWriter"""
+
+    @pytest.mark.parametrize("op_name", ["BitwiseAnd", "BitwiseOr", "BitwiseXor"])
+    def test_bitwise_binary_operations(self, op_name):
+        """Test bitwise binary operations"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i32", [2, 3])
+        tensor_b = writer.tensor("i32", [2, 3])
+
+        method = getattr(writer, op_name)
+        result = method(tensor_a, tensor_b)
+
+        assert result.dtype == tensor_a.dtype
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == f"onnx.{op_name}"
+
+    def test_bitwise_not_operation(self):
+        """Test BitwiseNot operation"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i32", [2, 3])
+
+        result = writer.BitwiseNot(tensor_a)
+
+        assert result.dtype == tensor_a.dtype
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == "onnx.BitwiseNot"
+
+    def test_bitwise_broadcasting(self):
+        """Test bitwise operations with broadcasting"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("i64", [2, 3, 4])
+        tensor_b = writer.tensor("i64", [4])
+
+        result = writer.BitwiseOr(tensor_a, tensor_b)
+        assert result.shape == [2, 3, 4]
+        assert result.dtype == "i64"
+
+
+class TestONNXWriterMinMaxOperations:
+    """Test Min/Max operations in ONNXWriter"""
+
+    @pytest.mark.parametrize("op_name", ["Max", "Min"])
+    def test_minmax_operations(self, op_name):
+        """Test Min and Max operations"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("f32", [2, 3])
+        tensor_b = writer.tensor("f32", [2, 3])
+
+        method = getattr(writer, op_name)
+        result = method(tensor_a, tensor_b)
+
+        assert result.dtype == tensor_a.dtype
+        assert result.shape == tensor_a.shape
+        assert writer.operations[-1].name == f"onnx.{op_name}"
+
+    def test_minmax_broadcasting(self):
+        """Test Min/Max operations with broadcasting"""
+        writer = ONNXWriter()
+        tensor_a = writer.tensor("f32", [2, 3, 4])
+        tensor_b = writer.tensor("f32", [4])
+
+        result_max = writer.Max(tensor_a, tensor_b)
+        assert result_max.shape == [2, 3, 4]
+
+        result_min = writer.Min(tensor_a, tensor_b)
+        assert result_min.shape == [2, 3, 4]

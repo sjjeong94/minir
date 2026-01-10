@@ -167,30 +167,3 @@ class TOSAWriter:
             attributes=kwargs,
         )
         return y
-
-
-if __name__ == "__main__":
-    w = TOSAWriter()
-    q = w.tensor("f32", [12, 50, 64])
-    k = w.tensor("f32", [12, 64, 50])
-    x = w.matmul(q, k)
-    x = w.abs(x)
-    x = w.negate(x)
-    x = w.exp(x)
-    x = w.log(x)
-    x = w.rsqrt(x)
-    x = w.reciprocal(x)
-    x = w.floor(x)
-    x = w.ceil(x)
-    x = w.tanh(x)
-    x = w.sigmoid(x)
-    x = w.add(x, x)
-    x = w.sub(x, x)
-    x = w.mul(x, x, shift=0)
-    x = w.pow(x, x)
-    x = w.reshape(x, [12, 50, 50])
-    x = w.transpose(x, [0, 2, 1])
-
-    w.ret([x])
-
-    print(w)

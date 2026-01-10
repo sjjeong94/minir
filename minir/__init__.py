@@ -1,4 +1,14 @@
-from minir.ir import Value, Operation, Function, Scalar, Vector, Tensor, Array, Dense
+from minir.ir import (
+    Value,
+    Operation,
+    Function,
+    Scalar,
+    Vector,
+    Tensor,
+    Array,
+    Dense,
+    Int64,
+)
 from minir.onnx_utils import from_onnx, to_onnx
 from minir.onnx_writer import ONNXWriter
 from minir.tosa_writer import TOSAWriter
@@ -14,4 +24,4 @@ from minir.rewrite import (
     CSEPass,
 )
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"

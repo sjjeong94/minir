@@ -1,11 +1,12 @@
 import onnx
 from typing import List, Dict, Any, Union, Optional
-from minir.ir import Operation, Function, Tensor, Dense, Array
+from minir.ir import Operation, Function, Tensor, Dense, Array, Int64
 from minir.utils import generate_unique_name
 
 
 def onnx_to_dtype(onnx_dtype: int) -> str:
     mapping = {
+        onnx.TensorProto.BOOL: "i1",
         onnx.TensorProto.INT8: "i8",
         onnx.TensorProto.INT16: "i16",
         onnx.TensorProto.INT32: "i32",
@@ -24,6 +25,7 @@ def onnx_to_dtype(onnx_dtype: int) -> str:
 
 def dtype_to_onnx(dtype: str) -> int:
     mapping = {
+        "i1": onnx.TensorProto.BOOL,
         "i8": onnx.TensorProto.INT8,
         "i16": onnx.TensorProto.INT16,
         "i32": onnx.TensorProto.INT32,
@@ -129,6 +131,8 @@ def make_node(operation: Operation) -> onnx.NodeProto:
     for k, v in operation.attributes.items():
         if isinstance(v, Array):
             attrs[k] = v.data
+        elif isinstance(v, Int64):
+            attrs[k] = v.value
         else:
             attrs[k] = v
 

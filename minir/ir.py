@@ -1,11 +1,23 @@
 from typing import List, Optional, Dict, Any
 
 
+class Int64:
+    """Wrapper class to represent 64-bit integers in MLIR attributes."""
+
+    def __init__(self, value: int) -> None:
+        self.value: int = value
+
+    def __repr__(self) -> str:
+        return f"{self.value} : i64"
+
+
 def get_attr(value: Any) -> str:
     if isinstance(value, str):
         if len(value) > 8:
             value = "..."
         return f'"{value}"'
+    elif isinstance(value, Int64):
+        return f"{value.value} : i64"
     elif isinstance(value, int):
         return f"{value} : i32"
     elif isinstance(value, float):

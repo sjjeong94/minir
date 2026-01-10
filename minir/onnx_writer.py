@@ -230,6 +230,68 @@ class ONNXWriter:
     def PRelu(self, x: Tensor, slope: Tensor, **kwargs) -> Tensor:
         return self.binary_op(name="onnx.PRelu", a=x, b=slope, **kwargs)
 
+    def Max(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.binary_op(name="onnx.Max", a=a, b=b, **kwargs)
+
+    def Min(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.binary_op(name="onnx.Min", a=a, b=b, **kwargs)
+
+    # Comparison operations (return bool type)
+    def comparison_op(self, name: str, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        ref = a if product(a.shape) >= product(b.shape) else b
+        c = self.tensor(dtype="i1", shape=ref.shape)
+        self.write(name=name, operands=[a, b], results=[c], attributes=kwargs)
+        return c
+
+    def Equal(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.comparison_op(name="onnx.Equal", a=a, b=b, **kwargs)
+
+    def Greater(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.comparison_op(name="onnx.Greater", a=a, b=b, **kwargs)
+
+    def GreaterOrEqual(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.comparison_op(name="onnx.GreaterOrEqual", a=a, b=b, **kwargs)
+
+    def Less(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.comparison_op(name="onnx.Less", a=a, b=b, **kwargs)
+
+    def LessOrEqual(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.comparison_op(name="onnx.LessOrEqual", a=a, b=b, **kwargs)
+
+    # Logical operations (bool input/output)
+    def logical_op(self, name: str, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        ref = a if product(a.shape) >= product(b.shape) else b
+        c = self.tensor(dtype="i1", shape=ref.shape)
+        self.write(name=name, operands=[a, b], results=[c], attributes=kwargs)
+        return c
+
+    def And(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.logical_op(name="onnx.And", a=a, b=b, **kwargs)
+
+    def Or(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.logical_op(name="onnx.Or", a=a, b=b, **kwargs)
+
+    def Xor(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.logical_op(name="onnx.Xor", a=a, b=b, **kwargs)
+
+    def Not(self, x: Tensor, **kwargs) -> Tensor:
+        y = self.tensor(dtype="i1", shape=x.shape)
+        self.write(name="onnx.Not", operands=[x], results=[y], attributes=kwargs)
+        return y
+
+    # Bitwise operations (integer input/output)
+    def BitwiseAnd(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.binary_op(name="onnx.BitwiseAnd", a=a, b=b, **kwargs)
+
+    def BitwiseOr(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.binary_op(name="onnx.BitwiseOr", a=a, b=b, **kwargs)
+
+    def BitwiseXor(self, a: Tensor, b: Tensor, **kwargs) -> Tensor:
+        return self.binary_op(name="onnx.BitwiseXor", a=a, b=b, **kwargs)
+
+    def BitwiseNot(self, x: Tensor, **kwargs) -> Tensor:
+        return self.unary_op(name="onnx.BitwiseNot", x=x, **kwargs)
+
     def reduce_op(
         self,
         name: str,
@@ -239,7 +301,7 @@ class ONNXWriter:
         **kwargs,
     ) -> Tensor:
         shape = []
-        for i in range(x.rank):
+        for i in range(len(x.shape)):
             if i in axes:
                 if keepdims:
                     shape.append(1)
@@ -383,8 +445,8 @@ class ONNXWriter:
         return self.global_op(name="onnx.GlobalLpPool", x=x, p=p, **kwargs)
 
     def Clip(self, x: Tensor, min: Any, max: Any, **kwargs) -> Tensor:
-        min = self.constant(np.array(min, dtype=dtype_to_numpy(x.dtype)))
-        max = self.constant(np.array(max, dtype=dtype_to_numpy(x.dtype)))
+        min = self.constant(np.array([min], dtype=dtype_to_numpy(x.dtype)))
+        max = self.constant(np.array([max], dtype=dtype_to_numpy(x.dtype)))
         y = self.tensor(dtype=x.dtype, shape=x.shape)
         self.write(
             name="onnx.Clip",
@@ -613,6 +675,69 @@ class ONNXWriter:
             operands=[data, indices_value],
             results=[y],
             attributes={"axis": axis, **kwargs},
+        )
+        return y
+
+    def Slice(
+        self,
+        data: Tensor,
+        starts: List[int],
+        ends: List[int],
+        axes: Optional[List[int]] = None,
+        steps: Optional[List[int]] = None,
+        **kwargs,
+    ) -> Tensor:
+        """
+        Slice operation extracts a sub-tensor from the input tensor.
+
+        Args:
+            data: Input tensor
+            starts: Starting indices for each axis
+            ends: Ending indices for each axis (exclusive)
+            axes: Axes along which to slice (default: all axes corresponding to starts/ends)
+            steps: Step values for each axis (default: 1 for all axes)
+        """
+        if axes is None:
+            axes = list(range(len(starts)))
+        if steps is None:
+            steps = [1] * len(starts)
+
+        # Calculate output shape
+        shape = data.shape.copy()
+        for i, axis in enumerate(axes):
+            start = starts[i]
+            end = ends[i]
+            step = steps[i]
+
+            # Handle negative indices
+            dim_size = data.shape[axis]
+            if start < 0:
+                start = max(0, dim_size + start)
+            if end < 0:
+                end = max(0, dim_size + end)
+
+            # Clamp to valid range
+            start = min(start, dim_size)
+            end = min(end, dim_size)
+
+            # Calculate slice size
+            if step > 0:
+                shape[axis] = max(0, (end - start + step - 1) // step)
+            else:
+                shape[axis] = max(0, (start - end - step - 1) // (-step))
+
+        y = self.tensor(dtype=data.dtype, shape=shape)
+
+        starts_value = self.constant(np.array(starts, dtype=np.int64))
+        ends_value = self.constant(np.array(ends, dtype=np.int64))
+        axes_value = self.constant(np.array(axes, dtype=np.int64))
+        steps_value = self.constant(np.array(steps, dtype=np.int64))
+
+        self.write(
+            name="onnx.Slice",
+            operands=[data, starts_value, ends_value, axes_value, steps_value],
+            results=[y],
+            attributes=kwargs,
         )
         return y
 

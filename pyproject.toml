@@ -11,7 +11,7 @@ license = {text = "MIT"}
 authors = [
     {name = "Sinjin Jeong", email = "sjjeong94@gmail.com"}
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "onnx",
     "numpy",

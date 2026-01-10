@@ -111,5 +111,3 @@ class RemoveIdentityScalePattern(OpRewritePattern):
         rewriter.replace_op_with_value(op, op.operands[0])
         return True
 ```
-
-For more examples, see [examples_rewrite.py](examples_rewrite.py)

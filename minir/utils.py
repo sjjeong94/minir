@@ -16,6 +16,7 @@ def generate_unique_name(prefix: str = "%") -> str:
 
 def dtype_to_numpy(dtype: str) -> str:
     mapping = {
+        "i1": "bool",
         "i8": "int8",
         "i16": "int16",
         "i32": "int32",
@@ -35,6 +36,7 @@ def numpy_to_dtype(np_dtype: str) -> str:
     if not isinstance(np_dtype, str):
         np_dtype = str(np_dtype)
     mapping = {
+        "bool": "i1",
         "int8": "i8",
         "int16": "i16",
         "int32": "i32",
