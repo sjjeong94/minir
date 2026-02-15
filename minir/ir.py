@@ -1,4 +1,27 @@
 from typing import List, Optional, Dict, Any
+from contextlib import contextmanager
+
+
+# Global setting for eliding large data in repr output
+ELIDE_DATA: bool = False
+
+
+@contextmanager
+def elide_data(elide: bool = True):
+    """
+    Context manager to temporarily set data elision for repr output.
+
+    Example:
+        >>> with elide_data():
+        ...     print(dense_tensor)  # prints "dense<__elided__>" instead of hex data
+    """
+    global ELIDE_DATA
+    old_value = ELIDE_DATA
+    ELIDE_DATA = elide
+    try:
+        yield
+    finally:
+        ELIDE_DATA = old_value
 
 
 class Int64:
@@ -23,8 +46,7 @@ def get_attr(value: Any) -> str:
     elif isinstance(value, float):
         return f"{value} : f32"
     elif isinstance(value, bytes):
-        elide = False
-        data = "__elided__" if elide else f'"0x{value.hex().upper()}"'
+        data = "__elided__" if ELIDE_DATA else f'"0x{value.hex().upper()}"'
         data = f"dense<{data}>"
         return data
     else:
@@ -94,8 +116,7 @@ class Dense:
         self.shape: List[int] = shape
 
     def __repr__(self) -> str:
-        elide = False
-        data = "__elided__" if elide else f'"0x{self.data.hex().upper()}"'
+        data = "__elided__" if ELIDE_DATA else f'"0x{self.data.hex().upper()}"'
         shape = "x".join(str(v) for v in self.shape)
         return f"dense<{data}> : tensor<{shape}x{self.dtype}>"
 
