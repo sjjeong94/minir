@@ -264,6 +264,10 @@ class TestBinaryFileIO:
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
+    @pytest.mark.skipif(
+        not HAS_MLIR_OPT,
+        reason="mlir-opt is required for MLIR bytecode roundtrip tests",
+    )
     def test_empty_function(self):
         """Test function with only return."""
         ret = Operation("func.return", operands=[], results=[])
@@ -282,6 +286,10 @@ class TestEdgeCases:
         with pytest.raises(ValueError, match="Unsupported bytecode format"):
             from_bytes(data)
 
+    @pytest.mark.skipif(
+        not HAS_MLIR_OPT,
+        reason="mlir-opt is required for MLIR bytecode roundtrip tests",
+    )
     def test_int64_attribute(self):
         """Test Int64 attribute type."""
         x = Tensor("x", "f32", [10])
