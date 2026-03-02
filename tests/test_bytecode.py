@@ -19,8 +19,21 @@ from minir.bytecode import (
     BinaryWriter,
     BinaryReader,
     MAGIC_NUMBER,
+    _find_mlir_opt,
 )
 from io import BytesIO
+
+
+def _has_mlir_opt() -> bool:
+    """Return True when the external mlir-opt binary is available."""
+    try:
+        _find_mlir_opt()
+    except RuntimeError:
+        return False
+    return True
+
+
+HAS_MLIR_OPT = _has_mlir_opt()
 
 
 class TestVarInt:
@@ -59,6 +72,10 @@ class TestVarInt:
             encode_varint(-1)
 
 
+@pytest.mark.skipif(
+    not HAS_MLIR_OPT,
+    reason="mlir-opt is required for MLIR bytecode roundtrip tests",
+)
 class TestBinaryRoundtrip:
     """Test serialization/deserialization roundtrip."""
 
@@ -213,6 +230,10 @@ class TestBinaryWriter:
         assert idx3 != idx1  # Different shape, different index
 
 
+@pytest.mark.skipif(
+    not HAS_MLIR_OPT,
+    reason="mlir-opt is required for MLIR bytecode file I/O tests",
+)
 class TestBinaryFileIO:
     """Test file I/O operations."""
 
