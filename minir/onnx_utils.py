@@ -175,7 +175,7 @@ def make_graph(func: Function) -> onnx.GraphProto:
     graph = onnx.helper.make_graph(
         nodes=[make_node(operation) for operation in operations],
         name=func.name,
-        inputs=[make_value_info(value) for value in func.arguments],
+        inputs=[make_value_info(value) for value in func.arguments if value.dtype != "none"],
         outputs=[make_value_info(value) for value in func.results],
         value_info=[make_value_info(value) for value in local_values],
         initializer=[make_initializer(op) for op in constants],

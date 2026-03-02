@@ -739,6 +739,115 @@ class TestONNXWriterNormalizationOperations:
         assert op.attributes["epsilon"] == 1e-5
         writer.to_onnx(check_model=True)
 
+    def test_rms_normalization(self):
+        """Test RMSNormalization operation"""
+        writer = ONNXWriter()
+        x = writer.tensor("f32", [2, 64, 32])
+        scale = writer.tensor("f32", [32])
+
+        result = writer.RMSNormalization(x, scale, axis=-1, epsilon=1e-6, stash_type="f32")
+
+        assert result.shape == x.shape
+        assert result.dtype == x.dtype
+
+        op = writer.operations[-1]
+        assert op.name == "onnx.RMSNormalization"
+        assert op.operands == [x, scale]
+        assert op.attributes["axis"] == -1
+        assert op.attributes["epsilon"] == 1e-6
+        assert op.attributes["stash_type"] == 1
+        writer.to_onnx(check_model=True)
+
+
+class TestONNXWriterAttentionOperations:
+    """Test attention-related operations"""
+
+    def test_attention(self):
+        """Test Attention operation"""
+        writer = ONNXWriter()
+        q = writer.tensor("f32", [2, 4, 8, 16])
+        k = writer.tensor("f32", [2, 2, 8, 16])
+        v = writer.tensor("f32", [2, 2, 8, 32])
+
+        result = writer.Attention(
+            q,
+            k,
+            v,
+            q_num_heads=4,
+            kv_num_heads=2,
+            scale=0.25,
+            is_causal=True,
+        )
+
+        assert result.shape == [2, 4, 8, 32]
+        assert result.dtype == q.dtype
+
+        op = writer.operations[-1]
+        assert op.name == "onnx.Attention"
+        assert op.operands == [q, k, v]
+        assert op.attributes["q_num_heads"] == 4
+        assert op.attributes["kv_num_heads"] == 2
+        assert op.attributes["scale"] == 0.25
+        assert op.attributes["is_causal"] == 1
+        writer.to_onnx(check_model=True)
+
+    def test_attention_with_optional_inputs(self):
+        """Test Attention with skipped optional input slots."""
+        writer = ONNXWriter()
+        q = writer.tensor("f32", [1, 4, 8, 16])
+        k = writer.tensor("f32", [1, 4, 8, 16])
+        v = writer.tensor("f32", [1, 4, 8, 16])
+        past_key = writer.tensor("f32", [1, 4, 4, 16])
+        past_value = writer.tensor("f32", [1, 4, 4, 16])
+
+        writer.Attention(q, k, v, past_key=past_key, past_value=past_value)
+
+        op = writer.operations[-1]
+        assert op.name == "onnx.Attention"
+        assert len(op.operands) == 6
+        assert op.operands[3].dtype == "none"
+        assert op.operands[4] == past_key
+        assert op.operands[5] == past_value
+        writer.to_onnx(check_model=True)
+
+    def test_attention_requires_past_key_value_pair(self):
+        """Attention should require both past tensors together."""
+        writer = ONNXWriter()
+        q = writer.tensor("f32", [1, 2, 4, 8])
+        k = writer.tensor("f32", [1, 2, 4, 8])
+        v = writer.tensor("f32", [1, 2, 4, 8])
+        past_key = writer.tensor("f32", [1, 2, 2, 8])
+
+        with pytest.raises(ValueError, match="past_key and past_value"):
+            writer.Attention(q, k, v, past_key=past_key)
+
+    def test_rotary_embedding(self):
+        """Test RotaryEmbedding operation"""
+        writer = ONNXWriter()
+        x = writer.tensor("f32", [2, 8, 4, 16])
+        cos_cache = writer.tensor("f32", [8, 4])
+        sin_cache = writer.tensor("f32", [8, 4])
+        position_ids = writer.tensor("i64", [2, 8])
+
+        result = writer.RotaryEmbedding(
+            x,
+            cos_cache,
+            sin_cache,
+            position_ids=position_ids,
+            interleaved=True,
+            rotary_embedding_dim=8,
+        )
+
+        assert result.shape == x.shape
+        assert result.dtype == x.dtype
+
+        op = writer.operations[-1]
+        assert op.name == "onnx.RotaryEmbedding"
+        assert op.operands == [x, cos_cache, sin_cache, position_ids]
+        assert op.attributes["interleaved"] == 1
+        assert op.attributes["rotary_embedding_dim"] == 8
+        writer.to_onnx(check_model=True)
+
 
 class TestONNXWriterSpaceDepthOperations:
     """Test space-depth conversion operations"""

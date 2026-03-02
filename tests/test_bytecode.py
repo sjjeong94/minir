@@ -258,7 +258,7 @@ class TestEdgeCases:
         """Invalid magic number should raise an error."""
         data = b"INVALID\x00" + b"\x00" * 100
 
-        with pytest.raises(ValueError, match="Invalid magic number"):
+        with pytest.raises(ValueError, match="Unsupported bytecode format"):
             from_bytes(data)
 
     def test_int64_attribute(self):
@@ -279,3 +279,18 @@ class TestEdgeCases:
         axis = restored.operations[0].attributes.get("axis")
         assert isinstance(axis, Int64)
         assert axis.value == 42
+
+    def test_legacy_bytecode_still_loads(self):
+        """Legacy MinIR bytecode remains readable."""
+        x = Tensor("x", "f32", [2, 2])
+        y = Tensor("y", "f32", [2, 2])
+        func = Function(
+            [Operation("test.identity", operands=[x], results=[y]), Operation("func.return", operands=[y], results=[])],
+            name="legacy_roundtrip",
+        )
+
+        data = BinaryWriter().serialize(func)
+        restored = from_bytes(data)
+
+        assert restored.name == "legacy_roundtrip"
+        assert len(restored.operations) == 2

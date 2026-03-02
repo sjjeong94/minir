@@ -1,7 +1,7 @@
 import pytest
 
 
-from minir.ir import Value, Scalar, Vector, Tensor, Operation, Function
+from minir.ir import Value, Scalar, Vector, Tensor, Dense, Operation, Function
 
 
 class TestValue:
@@ -56,6 +56,16 @@ class TestVector:
         vector = Vector("vec", "i32", [3, 4, 5])
         assert vector.shape == [3, 4, 5]
 
+    def test_vector_default_shape_is_not_shared(self):
+        """Default vector shapes should not share the same list."""
+        vector1 = Vector("vec1", "f32")
+        vector2 = Vector("vec2", "f32")
+
+        vector1.shape.append(2)
+
+        assert vector1.shape == [1, 2]
+        assert vector2.shape == [1]
+
     def test_vector_repr(self):
         """Test Vector string representation"""
         vector = Vector("test", "f32", [2, 3])
@@ -81,6 +91,16 @@ class TestTensor:
         encoding = {"sparse": True}
         tensor = Tensor("sparse_tensor", "f64", [2, 3], encoding)
         assert tensor.encoding == encoding
+
+    def test_tensor_default_shape_is_not_shared(self):
+        """Default tensor shapes should not share the same list."""
+        tensor1 = Tensor("tensor1", "f32")
+        tensor2 = Tensor("tensor2", "f32")
+
+        tensor1.shape.append(2)
+
+        assert tensor1.shape == [1, 2]
+        assert tensor2.shape == [1]
 
     def test_tensor_repr_without_encoding(self):
         """Test Tensor string representation without encoding"""
@@ -165,6 +185,15 @@ class TestOperation:
         assert "alpha = 0.5 : f32" in result_str
         assert "beta = 1 : i32" in result_str
         assert 'mode = "linear"' in result_str
+
+    def test_operation_repr_preserves_long_string_attributes(self):
+        """Long string attributes should not be truncated in emitted IR."""
+        operand = Scalar("x", "f32")
+        result = Scalar("y", "f32")
+        attrs = {"padding": "same_upper"}
+        op = Operation("custom", [operand], [result], attrs)
+
+        assert 'padding = "same_upper"' in repr(op)
 
     def test_operation_repr_with_bytes_attribute(self):
         """Test Operation string representation with bytes attribute"""
@@ -321,6 +350,15 @@ class TestFunction:
         assert "func.return" in func_str
         assert func_str.startswith("func.func")
         assert func_str.endswith("}")
+
+
+class TestDense:
+    """Test cases for the Dense class"""
+
+    def test_dense_scalar_repr(self):
+        """Scalar dense values should use scalar tensor syntax."""
+        dense = Dense(b"\x00\x00\x80\x3f", "f32", [])
+        assert repr(dense) == 'dense<"0x0000803F"> : tensor<f32>'
 
 
 class TestIntegration:

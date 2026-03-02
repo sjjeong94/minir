@@ -61,6 +61,24 @@ class ONNXWriter:
             )
         )
 
+    def _operands_with_optional(
+        self,
+        required: List[Tensor],
+        optional: List[Optional[Tensor]],
+    ) -> List[Tensor]:
+        operands = list(required)
+        last_present = -1
+        for idx, value in enumerate(optional):
+            if value is not None:
+                last_present = idx
+        for idx in range(last_present + 1):
+            value = optional[idx]
+            if value is None:
+                operands.append(Tensor(name="", dtype="none", shape=[]))
+            else:
+                operands.append(value)
+        return operands
+
     def ret(self, values: List[Tensor] = None) -> None:
         if values is None:
             values = []
@@ -835,6 +853,120 @@ class ONNXWriter:
             attributes={
                 "num_groups": num_groups,
                 "epsilon": epsilon,
+                **kwargs,
+            },
+        )
+        return y
+
+    def Attention(
+        self,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        attn_mask: Optional[Tensor] = None,
+        past_key: Optional[Tensor] = None,
+        past_value: Optional[Tensor] = None,
+        scale: Optional[float] = None,
+        is_causal: bool = False,
+        q_num_heads: Optional[int] = None,
+        kv_num_heads: Optional[int] = None,
+        softcap: Optional[float] = None,
+        softmax_precision: Optional[Union[str, int]] = None,
+        qk_matmul_output_mode: Optional[int] = None,
+        **kwargs,
+    ) -> Tensor:
+        if (past_key is None) != (past_value is None):
+            raise ValueError("past_key and past_value must be provided together")
+
+        shape = q.shape.copy()
+        if shape and v.shape:
+            shape[-1] = v.shape[-1]
+
+        y = self.tensor(dtype=q.dtype, shape=shape)
+        operands = self._operands_with_optional(
+            [q, k, v],
+            [attn_mask, past_key, past_value],
+        )
+
+        attributes: Dict[str, Any] = {**kwargs}
+        if scale is not None:
+            attributes["scale"] = scale
+        if is_causal:
+            attributes["is_causal"] = 1
+        if q_num_heads is not None:
+            attributes["q_num_heads"] = q_num_heads
+        if kv_num_heads is not None:
+            attributes["kv_num_heads"] = kv_num_heads
+        if softcap is not None:
+            attributes["softcap"] = softcap
+        if softmax_precision is not None:
+            attributes["softmax_precision"] = (
+                dtype_to_onnx(softmax_precision)
+                if isinstance(softmax_precision, str)
+                else softmax_precision
+            )
+        if qk_matmul_output_mode is not None:
+            attributes["qk_matmul_output_mode"] = qk_matmul_output_mode
+
+        self.write(
+            name="onnx.Attention",
+            operands=operands,
+            results=[y],
+            attributes=attributes,
+        )
+        return y
+
+    def RotaryEmbedding(
+        self,
+        x: Tensor,
+        cos_cache: Tensor,
+        sin_cache: Tensor,
+        position_ids: Optional[Tensor] = None,
+        interleaved: bool = False,
+        num_heads: Optional[int] = None,
+        rotary_embedding_dim: Optional[int] = None,
+        **kwargs,
+    ) -> Tensor:
+        y = self.tensor(dtype=x.dtype, shape=x.shape)
+        operands = self._operands_with_optional(
+            [x, cos_cache, sin_cache],
+            [position_ids],
+        )
+        attributes: Dict[str, Any] = {"interleaved": 1 if interleaved else 0, **kwargs}
+        if num_heads is not None:
+            attributes["num_heads"] = num_heads
+        if rotary_embedding_dim is not None:
+            attributes["rotary_embedding_dim"] = rotary_embedding_dim
+        self.write(
+            name="onnx.RotaryEmbedding",
+            operands=operands,
+            results=[y],
+            attributes=attributes,
+        )
+        return y
+
+    def RMSNormalization(
+        self,
+        x: Tensor,
+        scale: Tensor,
+        axis: int = -1,
+        epsilon: float = 1e-5,
+        stash_type: Union[str, int] = "f32",
+        **kwargs,
+    ) -> Tensor:
+        y = self.tensor(dtype=x.dtype, shape=x.shape)
+        self.write(
+            name="onnx.RMSNormalization",
+            operands=[x, scale],
+            results=[y],
+            attributes={
+                "axis": axis,
+                "epsilon": epsilon,
+                "stash_type": (
+                    dtype_to_onnx(stash_type)
+                    if isinstance(stash_type, str)
+                    else stash_type
+                ),
                 **kwargs,
             },
         )

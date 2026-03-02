@@ -13,7 +13,6 @@ from minir.ir import (
 )
 from minir.onnx_utils import from_onnx, to_onnx
 from minir.onnx_writer import ONNXWriter
-from minir.tosa_writer import TOSAWriter
 from minir.rewrite import (
     OpRewritePattern,
     RewritePatternSet,
@@ -30,4 +29,4 @@ from minir.bytecode import (
     from_bytes,
 )
 
-__version__ = "0.1.10"
+__version__ = "0.1.11"

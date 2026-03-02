@@ -36,9 +36,9 @@ class Int64:
 
 def get_attr(value: Any) -> str:
     if isinstance(value, str):
-        if len(value) > 8:
-            value = "..."
         return f'"{value}"'
+    elif isinstance(value, bool):
+        return "true" if value else "false"
     elif isinstance(value, Int64):
         return f"{value.value} : i64"
     elif isinstance(value, int):
@@ -70,9 +70,11 @@ class Scalar(Value):
 
 
 class Vector(Scalar):
-    def __init__(self, name: str, dtype: str, shape: List[int] = [1]) -> None:
+    def __init__(
+        self, name: str, dtype: str, shape: Optional[List[int]] = None
+    ) -> None:
         super().__init__(name, dtype)
-        self.shape: List[int] = shape
+        self.shape: List[int] = [1] if shape is None else list(shape)
 
     def __repr__(self) -> str:
         if len(self.shape) == 0:
@@ -86,7 +88,7 @@ class Tensor(Vector):
         self,
         name: str,
         dtype: str,
-        shape: List[int] = [1],
+        shape: Optional[List[int]] = None,
         encoding: Any = None,
     ) -> None:
         super().__init__(name, dtype, shape)
@@ -117,6 +119,8 @@ class Dense:
 
     def __repr__(self) -> str:
         data = "__elided__" if ELIDE_DATA else f'"0x{self.data.hex().upper()}"'
+        if len(self.shape) == 0:
+            return f"dense<{data}> : tensor<{self.dtype}>"
         shape = "x".join(str(v) for v in self.shape)
         return f"dense<{data}> : tensor<{shape}x{self.dtype}>"
 
